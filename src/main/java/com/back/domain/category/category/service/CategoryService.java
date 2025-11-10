@@ -43,7 +43,7 @@ public class CategoryService {
                 .build();
 
         Category saved = categoryRepository.save(category);
-        return new CategoryResBody(saved.getName(), null);
+        return new CategoryResBody(saved.getId(), saved.getName(), null);
     }
 
     private CategoryResBody createCategoryWithoutParent(String categoryName) {
@@ -52,6 +52,6 @@ public class CategoryService {
                 .build();
 
         Category saved = categoryRepository.save(category);
-        return new CategoryResBody(saved.getName(), null);
+        return new CategoryResBody(saved.getId(), saved.getName(), null);
     }
 }
