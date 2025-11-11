@@ -3,9 +3,14 @@ package com.back.domain.reservation.reservation.service;
 import com.back.domain.member.member.entity.Member;
 import com.back.domain.reservation.reservation.common.ReservationStatus;
 import com.back.domain.reservation.reservation.dto.CreateReservationReqBody;
+import com.back.domain.reservation.reservation.dto.ReservationSummaryDto;
 import com.back.domain.reservation.reservation.entity.Reservation;
 import com.back.domain.reservation.reservation.repository.ReservationRepository;
+import com.back.standard.util.page.PagePayload;
+import com.back.standard.util.page.PageUt;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -58,4 +63,19 @@ public class ReservationService {
 //            throw new ServiceException("400-1", "해당 기간에 이미 예약이 있습니다.");
 //        }
 //    }
+
+    public PagePayload<ReservationSummaryDto> getSentReservations(Member author, Pageable pageable, ReservationStatus status, String keyword) {
+        // TODO: post의 제목을 keyword로 검색하도록 수정 필요
+        // TODO: QueryDsl로 변경 예정
+        Page<Reservation> reservationPage;
+        if (status == null) {
+            reservationPage = reservationRepository.findByAuthor(author, pageable);
+        } else {
+            reservationPage = reservationRepository.findByAuthorAndStatus(author, status, pageable);
+        }
+
+        Page<ReservationSummaryDto> reservationSummaryDtoPage = reservationPage.map(ReservationSummaryDto::new);
+
+        return PageUt.of(reservationSummaryDtoPage);
+    }
 }
