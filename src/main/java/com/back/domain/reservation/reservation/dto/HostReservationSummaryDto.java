@@ -7,9 +7,9 @@ import com.back.domain.reservation.reservation.entity.Reservation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record ReservationSummaryDto(
+public record HostReservationSummaryDto(
         Long reservationId,
-        // Post post,
+        // Long postId,
         ReservationStatus status,
         ReservationDeliveryMethod receiveMethod,
         ReservationDeliveryMethod returnMethod,
@@ -22,10 +22,10 @@ public record ReservationSummaryDto(
         // Option option,
         int totalAmount
 ) {
-    public ReservationSummaryDto(Reservation reservation) {
+    public HostReservationSummaryDto(Reservation reservation) {
         this(
                 reservation.getId(),
-                // TODO: post 필드 매핑
+                // TODO: postId 필드 매핑
                 reservation.getStatus(),
                 reservation.getReceiveMethod(),
                 reservation.getReturnMethod(),
