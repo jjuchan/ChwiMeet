@@ -24,7 +24,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 //                                         @Param("endAt") LocalDateTime endAt);
 
     Page<Reservation> findByAuthor(Member author, Pageable pageable);
-
-
     Page<Reservation> findByAuthorAndStatus(Member author, ReservationStatus status, Pageable pageable);
+
+//    Page<Reservation> findByAuthorAndPost(Post post, Pageable pageable);
+//    Page<Reservation> findByAuthorAndPostAndStatus(Post post, ReservationStatus status, Pageable pageable);
 }

@@ -78,4 +78,23 @@ public class ReservationService {
 
         return PageUt.of(reservationSummaryDtoPage);
     }
+
+//    public PagePayload<ReservationSummaryDto> getReceivedReservations(
+//            Post post,
+//            Member author,
+//            Pageable pageable,
+//            ReservationStatus status,
+//            String keyword) {
+//        // TODO: postId로 게시글 조회 후, 해당 게시글의 호스트와 author 비교 필요
+//        Page<Reservation> reservationPage;
+//        if (status == null) {
+//            reservationPage = reservationRepository.findByPost(post, pageable);
+//        } else {
+//            reservationPage = reservationRepository.findByPostAndStatus(post, status, pageable);
+//        }
+//
+//        Page<ReservationSummaryDto> reservationSummaryDtoPage = reservationPage.map(ReservationSummaryDto::new);
+//
+//        return PageUt.of(reservationSummaryDtoPage);
+//    }
 }

@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class ReservationController {
     private final ReservationService reservationService;
     private final MemberService memberService;
+//    private final PostService postService;
 
     @Transactional
     @PostMapping
@@ -52,4 +53,20 @@ public class ReservationController {
 
         return RsData.success("게스트의 예약 목록 %d 페이지 출력".formatted(reservations.page().page()), reservations);
     }
+
+//    @Transactional(readOnly = true)
+//    @GetMapping("/received/{postId}")
+//    public RsData<PagePayload<ReservationSummaryDto>> getReceivedReservations(
+//            @AuthenticationPrincipal SecurityUser securityUser,
+//            @PathVariable Long postId,
+//            @PageableDefault(size = 1, page = 0)Pageable pageable,
+//            @RequestParam(required = false) ReservationStatus status,
+//            @RequestParam(required = false) String keyword
+//    ) {
+//        Member author = memberService.getById(securityUser.getId());
+//        Post post = postService.getById(postId);
+//        PagePayload<ReservationSummaryDto> reservations = reservationService.getReceivedReservations(post, author, pageable, status, keyword);
+//
+//        return RsData.success("호스트의 %d번 게시글 예약 목록 %d 페이지 출력".formatted(postId, reservations.page().page()), reservations);
+//    }
 }
