@@ -3,7 +3,7 @@ package com.back.domain.reservation.reservation.service;
 import com.back.domain.member.member.entity.Member;
 import com.back.domain.reservation.reservation.common.ReservationStatus;
 import com.back.domain.reservation.reservation.dto.CreateReservationReqBody;
-import com.back.domain.reservation.reservation.dto.GuestReservationSummaryDto;
+import com.back.domain.reservation.reservation.dto.GuestReservationSummaryResBody;
 import com.back.domain.reservation.reservation.entity.Reservation;
 import com.back.domain.reservation.reservation.repository.ReservationRepository;
 import com.back.standard.util.page.PagePayload;
@@ -64,7 +64,7 @@ public class ReservationService {
 //        }
 //    }
 
-    public PagePayload<GuestReservationSummaryDto> getSentReservations(Member author, Pageable pageable, ReservationStatus status, String keyword) {
+    public PagePayload<GuestReservationSummaryResBody> getSentReservations(Member author, Pageable pageable, ReservationStatus status, String keyword) {
         // TODO: post의 제목을 keyword로 검색하도록 수정 필요
         // TODO: QueryDsl로 변경 예정
         Page<Reservation> reservationPage;
@@ -74,7 +74,7 @@ public class ReservationService {
             reservationPage = reservationRepository.findByAuthorAndStatus(author, status, pageable);
         }
 
-        Page<GuestReservationSummaryDto> reservationSummaryDtoPage = reservationPage.map(GuestReservationSummaryDto::new);
+        Page<GuestReservationSummaryResBody> reservationSummaryDtoPage = reservationPage.map(GuestReservationSummaryResBody::new);
 
         return PageUt.of(reservationSummaryDtoPage);
     }
@@ -93,7 +93,7 @@ public class ReservationService {
 //            reservationPage = reservationRepository.findByPostAndStatus(post, status, pageable);
 //        }
 //
-//        Page<HostReservationSummaryDto> reservationSummaryDtoPage = reservationPage.map(HostReservationSummaryDto::new);
+//        Page<HostReservationSummaryDto> reservationSummaryDtoPage = reservationPage.map(HostReservationSummaryResBody::new);
 //
 //        return PageUt.of(reservationSummaryDtoPage);
 //    }

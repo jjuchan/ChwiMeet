@@ -7,7 +7,7 @@ import com.back.domain.reservation.reservation.entity.Reservation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record GuestReservationSummaryDto(
+public record GuestReservationSummaryResBody(
         Long reservationId,
         // Post post,
         ReservationStatus status,
@@ -22,7 +22,7 @@ public record GuestReservationSummaryDto(
         // Option option,
         int totalAmount
 ) {
-    public GuestReservationSummaryDto(Reservation reservation) {
+    public GuestReservationSummaryResBody(Reservation reservation) {
         this(
                 reservation.getId(),
                 // TODO: post 필드 매핑
