@@ -4,7 +4,6 @@ import com.back.domain.member.member.entity.Member;
 import com.back.domain.member.member.service.MemberService;
 import com.back.domain.reservation.reservation.common.ReservationStatus;
 import com.back.domain.reservation.reservation.dto.*;
-import com.back.domain.reservation.reservation.entity.Reservation;
 import com.back.domain.reservation.reservation.service.ReservationService;
 import com.back.global.security.SecurityUser;
 import com.back.standard.util.page.PagePayload;
@@ -27,15 +26,15 @@ public class ReservationController {
 
     @Transactional
     @PostMapping
-    public ResponseEntity<Reservation> createReservation(
+    public ResponseEntity<String> createReservation(
             @Valid @RequestBody CreateReservationReqBody ReqBody,
             @AuthenticationPrincipal SecurityUser securityUser
     ) {
         Member author = memberService.getById(securityUser.getId());
 
-        Reservation reservation = reservationService.create(ReqBody, author);
+        Long reservationId = reservationService.create(ReqBody, author);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
+        return ResponseEntity.status(HttpStatus.CREATED).body("%d번 예약이 생성되었습니다".formatted(reservationId));
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +73,6 @@ public class ReservationController {
             @PathVariable Long reservationId,
             @AuthenticationPrincipal SecurityUser securityUser
             ) {
-        // TODO: logs 정보 가져오기 (service 에서 ReservationDto를 만들어 오는 방식 고려)
         ReservationDto reservationDto = reservationService.getReservationDtoById(reservationId, securityUser.getId());
         return ResponseEntity.ok(reservationDto);
     }
@@ -86,6 +84,16 @@ public class ReservationController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody UpdateReservationStatusReqBody reqBody ) {
         reservationService.updateReservationStatus(reservationId, securityUser.getId(), reqBody);
-        return ResponseEntity.ok("예약 상태가 업데이트 되었습니다.");
+        return ResponseEntity.ok("%d번 예약 상태가 업데이트 되었습니다.".formatted(reservationId));
+    }
+
+    @Transactional
+    @PutMapping("/{reservationId}")
+    public ResponseEntity<String> updateReservation(
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody UpdateReservationReqBody reqBody ) {
+        reservationService.updateReservation(reservationId, securityUser.getId(), reqBody);
+        return ResponseEntity.ok("%d번 예약이 수정되었습니다.".formatted(reservationId));
     }
 }

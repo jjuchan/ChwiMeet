@@ -2,6 +2,7 @@ package com.back.domain.reservation.reservation.entity;
 
 import com.back.domain.member.member.entity.Member;
 import com.back.domain.post.post.entity.Post;
+import com.back.domain.post.post.entity.PostOption;
 import com.back.domain.reservation.reservation.common.ReservationDeliveryMethod;
 import com.back.domain.reservation.reservation.common.ReservationStatus;
 import com.back.domain.review.review.entity.Review;
@@ -276,5 +277,34 @@ public class Reservation extends BaseEntity {
 
     public boolean canTransitionTo(ReservationStatus newStatus) {
         return getAllowedTransitions().contains(newStatus);
+    }
+
+    public boolean isModifiable() {
+        return this.status == ReservationStatus.PENDING_APPROVAL;
+    }
+
+    public void updateDetails(
+            ReservationDeliveryMethod receiveMethod,
+            String receiveAddress1,
+            String receiveAddress2,
+            ReservationDeliveryMethod returnMethod,
+            LocalDate reservationStartAt,
+            LocalDate reservationEndAt,
+            List<PostOption> selectedOptions) {
+        this.receiveMethod = receiveMethod;
+        this.receiveAddress1 = receiveAddress1;
+        this.receiveAddress2 = receiveAddress2;
+        this.returnMethod = returnMethod;
+        this.reservationStartAt = reservationStartAt;
+        this.reservationEndAt = reservationEndAt;
+        this.reservationOptions.clear();
+        selectedOptions.forEach(option ->
+                this.reservationOptions.add(
+                        ReservationOption.builder()
+                                .postOption(option)
+                                .reservation(this)
+                                .build()
+                )
+        );
     }
 }

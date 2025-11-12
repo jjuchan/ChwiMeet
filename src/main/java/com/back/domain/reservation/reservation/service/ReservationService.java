@@ -34,21 +34,25 @@ public class ReservationService {
     private final ReservationLogRepository reservationLogRepository;
     private final PostService postService;
 
-    public Reservation create(CreateReservationReqBody reqBody, Member author) {
+    public Long create(CreateReservationReqBody reqBody, Member author) {
         Post post = postService.getById(reqBody.postId());
 
         // 기간 중복 체크
         validateNoOverlappingReservation(
                 post.getId(),
                 reqBody.reservationStartAt(),
-                reqBody.reservationEndAt()
+                reqBody.reservationEndAt(),
+                null
         );
 
         // 같은 게스트의 중복 예약 체크 (게시글 ID 필요)
         validateNoDuplicateReservation(post.getId(), author.getId());
 
         // 전달 방식 유효성 체크
-        validateDeliveryMethods(post, reqBody);
+        validateDeliveryMethods(post, reqBody.receiveMethod(), reqBody.returnMethod());
+
+        // 배송 정보 유효성 체크
+        validateDeliveryInfo(reqBody.receiveMethod(), reqBody.receiveAddress1(), reqBody.receiveAddress2());
 
         // 선택된 PostOption 엔티티 조회 및 유효성 검증
         List<PostOption> selectedOptions = getOptionsByIds(post.getId(), reqBody.optionIds());
@@ -80,7 +84,8 @@ public class ReservationService {
             reservation.addAllOptions(reservationOptions);
         }
 
-        return reservationRepository.save(reservation);
+        reservationRepository.save(reservation);
+        return reservation.getId();
     }
 
     public long count() {
@@ -88,30 +93,27 @@ public class ReservationService {
     }
 
     // 기간 중복 체크
-    private void validateNoOverlappingReservation(
-            Long postId,
-            LocalDate startAt,
-            LocalDate endAt
-    ) {
-        boolean hasOverlap = reservationRepository.existsOverlappingReservation(
-                postId, startAt, endAt
-        );
+    private void validateNoOverlappingReservation(Long postId, LocalDate start, LocalDate end, Long excludeId) {
+        boolean hasOverlap = (excludeId == null)
+                ? reservationRepository.existsOverlappingReservation(postId, start, end)
+                : reservationRepository.existsOverlappingReservationExcludingSelf(postId, start, end, excludeId);
 
         if (hasOverlap) {
             throw new ServiceException("400-1", "해당 기간에 이미 예약이 있습니다.");
         }
     }
 
+    // 같은 게스트의 중복 예약 체크
     private void validateNoDuplicateReservation(Long postId, Long authorId) {
-        boolean exists = reservationRepository.existsByPostIdAndAuthorId(postId, authorId);
+        boolean exists = reservationRepository.existsActiveReservationByPostIdAndAuthorId(postId, authorId);
         if (exists) {
             throw new ServiceException("400-2", "이미 해당 게시글에 예약이 존재합니다.");
         }
     }
 
-    private void validateDeliveryMethods(Post post, CreateReservationReqBody reqBody) {
+    private void validateDeliveryMethods(Post post, ReservationDeliveryMethod receiveMethod, ReservationDeliveryMethod returnMethod) {
         // 수령 방식 (Receive Method) 검증
-        if (!isReceiveMethodAllowed(post.getReceiveMethod(), reqBody.receiveMethod())) {
+        if (!isReceiveMethodAllowed(post.getReceiveMethod(), receiveMethod)) {
             throw new ServiceException(
                     "400-3",
                     "게시글에서 허용하는 수령 방식(%s)이 아닙니다.".formatted(post.getReceiveMethod().getDescription())
@@ -119,7 +121,7 @@ public class ReservationService {
         }
 
         // 반납 방식 (Return Method) 검증
-        if (!isReturnMethodAllowed(post.getReturnMethod(), reqBody.returnMethod())) {
+        if (!isReturnMethodAllowed(post.getReturnMethod(), returnMethod)) {
             throw new ServiceException(
                     "400-4",
                     "게시글에서 허용하는 반납 방식(%s)이 아닙니다.".formatted(post.getReturnMethod().getDescription())
@@ -475,5 +477,66 @@ public class ReservationService {
     public Reservation getById(Long reservationId) {
         return reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ServiceException("404-1", "해당 예약을 찾을 수 없습니다."));
+    }
+
+    public void updateReservation(Long reservationId, Long memberId, UpdateReservationReqBody reqBody) {
+        Reservation reservation = reservationRepository.findByIdWithOptions(reservationId)
+                .orElseThrow(() -> new ServiceException("404-1", "해당 예약을 찾을 수 없습니다."));
+
+        // 권한 체크: 예약 작성한 게스트만 수정 가능
+        if (!reservation.getAuthor().getId().equals(memberId)) {
+            throw new ServiceException("403-1", "해당 예약을 수정할 권한이 없습니다.");
+        }
+
+        // 수정 가능 상태인지 체크
+        if (!reservation.isModifiable()) {
+            throw new ServiceException("400-1", "현재 상태에서는 예약을 수정할 수 없습니다.");
+        }
+
+        // 배송 정보 유효성 체크
+        validateDeliveryInfo(reqBody.receiveMethod(), reqBody.receiveAddress1(), reqBody.receiveAddress2());
+
+        // 기간 중복 체크 (자기 자신 제외)
+        validateNoOverlappingReservation(
+                reservation.getPost().getId(),
+                reqBody.reservationStartAt(),
+                reqBody.reservationEndAt(),
+                reservationId  // 자기 자신의 ID 전달
+        );
+
+        // 전달 방식 유효성 체크
+        validateDeliveryMethods(reservation.getPost(), reqBody.receiveMethod(), reqBody.returnMethod());
+
+        // 선택된 PostOption 엔티티 조회 및 유효성 검증
+        List<PostOption> selectedOptions = getOptionsByIds(reservation.getPost().getId(), reqBody.optionIds());
+
+        // 예약 정보 업데이트
+        reservation.updateDetails(
+                reqBody.receiveMethod(),
+                reqBody.receiveAddress1(),
+                reqBody.receiveAddress2(),
+                reqBody.returnMethod(),
+                reqBody.reservationStartAt(),
+                reqBody.reservationEndAt(),
+                selectedOptions
+        );
+
+        reservationRepository.save(reservation);
+    }
+
+    // 배송 주소 입력 검증 메서드
+    private void validateDeliveryInfo(ReservationDeliveryMethod method, String address1, String address2) {
+        if (method == ReservationDeliveryMethod.DELIVERY) {
+            // 택배 배송인 경우 주소 필수
+            if (address1 == null || address1.isBlank()) {
+                throw new ServiceException("400-20", "택배 배송 시 주소는 필수입니다.");
+            }
+        } else if (method == ReservationDeliveryMethod.DIRECT) {
+            // 직거래인 경우 주소 불필요
+            if ((address1 != null && !address1.isBlank()) ||
+                    (address2 != null && !address2.isBlank())) {
+                throw new ServiceException("400-21", "직거래 방식에서는 주소를 입력할 수 없습니다.");
+            }
+        }
     }
 }
