@@ -211,7 +211,7 @@ public class PostService {
                                         .map(img -> img.getImageUrl())
                                         .orElse(null)
                         )
-                        .categoryId(post.getCategory().getId()) // TODO: 추후 카테고리 연동
+                        .categoryId(post.getCategory().getId())
                         .regionIds(post.getPostRegions().stream()
                                 .map(postRegion -> postRegion.getId())
                                 .collect(Collectors.toList()))
@@ -260,4 +260,35 @@ public class PostService {
                 });
     }
 
+    public PagePayload<PostListResBody> getFavoritePosts(long memberId, Pageable pageable) {
+        Page<PostFavorite> favoritePosts = postFavoriteRepository.findAllByMemberId(memberId, pageable);
+
+        Page<PostListResBody> mappedPage = favoritePosts.map(favorite -> {
+            Post post = favorite.getPost();
+            return PostListResBody.builder()
+                    .postId(post.getId())
+                    .title(post.getTitle())
+                    .thumbnailImageUrl(
+                            post.getImages().stream()
+                                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                                    .findFirst()
+                                    .map(img -> img.getImageUrl())
+                                    .orElse(null)
+                    )
+                    .categoryId(post.getCategory().getId())
+                    .regionIds(post.getPostRegions().stream()
+                            .map(postRegion -> postRegion.getRegion().getId())
+                            .collect(Collectors.toList()))
+                    .receiveMethod(post.getReceiveMethod())
+                    .returnMethod(post.getReturnMethod())
+                    .createdAt(post.getCreatedAt())
+                    .authorNickname(post.getAuthor().getNickname())
+                    .fee(post.getFee())
+                    .deposit(post.getDeposit())
+                    .isFavorite(true)
+                    .isBanned(post.getIsBanned())
+                    .build();
+        });
+        return PageUt.of(mappedPage);
+    }
 }

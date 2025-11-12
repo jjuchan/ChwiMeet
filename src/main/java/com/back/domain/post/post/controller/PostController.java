@@ -79,4 +79,15 @@ public class PostController {
         boolean isFavorite = postService.toggleFavorite(postId, securityUser.getId());
         return ResponseEntity.ok(isFavorite ? "즐겨찾기에 추가되었습니다." : "즐겨찾기가 해제되었습니다.");
     }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<PagePayload<PostListResBody>> getFavoritePosts(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @ParameterObject
+            @PageableDefault(size = 30, sort = "id", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        PagePayload<PostListResBody> body = postService.getFavoritePosts(securityUser.getId(), pageable);
+        return ResponseEntity.ok(body);
+    }
 }
