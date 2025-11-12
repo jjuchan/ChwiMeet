@@ -11,14 +11,10 @@ import java.util.List;
 public record CreateReservationReqBody(
         @NotNull
         ReservationDeliveryMethod receiveMethod,
-        String receiveCarrier,
-        String receiveTrackingNumber,
         String receiveAddress1,
         String receiveAddress2,
         @NotNull
         ReservationDeliveryMethod returnMethod,
-        String returnCarrier,
-        String returnTrackingNumber,
         @NotNull
         @Future // 현재 시간 이후일 것
         LocalDate reservationStartAt,
