@@ -1,6 +1,7 @@
 package com.back.domain.reservation.repository;
 
 import com.back.domain.member.entity.Member;
+import com.back.domain.member.entity.QMember;
 import com.back.domain.post.post.entity.Post;
 import com.back.domain.reservation.common.ReservationStatus;
 import com.back.domain.reservation.entity.Reservation;
@@ -87,10 +88,13 @@ public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
 
     @Override
     public Optional<Reservation> findByIdWithPostAndAuthor(Long id) {
+        QMember guest = new QMember("guest");      // ← 게스트용 별칭
+        QMember host = new QMember("host");        // ← 호스트용 별칭
+
         Reservation result = selectFrom(reservation)
                 .leftJoin(reservation.post, post).fetchJoin()
-                .leftJoin(reservation.author, member).fetchJoin()
-                .leftJoin(post.author, member).fetchJoin()  // 호스트 정보도
+                .leftJoin(reservation.author, guest).fetchJoin()
+                .leftJoin(post.author, host).fetchJoin()
                 .where(reservation.id.eq(id))
                 .fetchOne();
 
@@ -107,7 +111,7 @@ public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
         List<Reservation> content = selectFrom(reservation)
                 .leftJoin(reservation.post, post).fetchJoin()
                 .leftJoin(post.author, member).fetchJoin()
-                .leftJoin(post.images, postImage).fetchJoin()
+                .leftJoin(post.images, postImage)
                 .leftJoin(reservation.reservationOptions, reservationOption).fetchJoin()
                 .leftJoin(reservationOption.postOption, postOption).fetchJoin()
                 .where(
