@@ -2,7 +2,7 @@ package com.back.domain.reservation.repository;
 
 import com.back.domain.member.entity.Member;
 import com.back.domain.member.entity.QMember;
-import com.back.domain.post.post.entity.Post;
+import com.back.domain.post.entity.Post;
 import com.back.domain.reservation.common.ReservationStatus;
 import com.back.domain.reservation.entity.Reservation;
 import com.back.global.queryDsl.CustomQuerydslRepositorySupport;
@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.back.domain.member.entity.QMember.member;
-import static com.back.domain.post.post.entity.QPost.post;
-import static com.back.domain.post.post.entity.QPostImage.postImage;
-import static com.back.domain.post.post.entity.QPostOption.postOption;
+import static com.back.domain.post.entity.QPost.post;
+import static com.back.domain.post.entity.QPostImage.postImage;
+import static com.back.domain.post.entity.QPostOption.postOption;
 import static com.back.domain.reservation.entity.QReservation.reservation;
 import static com.back.domain.reservation.entity.QReservationOption.reservationOption;
 
