@@ -476,7 +476,7 @@ public class ReservationService {
     }
 
     public void updateReservation(Long reservationId, Long memberId, UpdateReservationReqBody reqBody) {
-        Reservation reservation = reservationRepository.findByIdWithOptions(reservationId)
+        Reservation reservation = reservationQueryRepository.findByIdWithOptions(reservationId)
                 .orElseThrow(() -> new ServiceException(HttpStatus.NOT_FOUND, "해당 예약을 찾을 수 없습니다."));
 
         // 권한 체크: 예약 작성한 게스트만 수정 가능

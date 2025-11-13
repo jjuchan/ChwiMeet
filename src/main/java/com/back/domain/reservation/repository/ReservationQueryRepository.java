@@ -8,9 +8,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
+import static com.back.domain.post.post.entity.QPostOption.postOption;
 import static com.back.domain.reservation.entity.QReservation.reservation;
-
+import static com.back.domain.reservation.entity.QReservationOption.reservationOption;
 
 @Repository
 public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
@@ -60,6 +62,17 @@ public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
                 .fetchFirst();  // LIMIT 1
 
         return result != null;
+    }
+
+    @Override
+    public Optional<Reservation> findByIdWithOptions(Long id) {
+        Reservation result = selectFrom(reservation)
+                .leftJoin(reservation.reservationOptions, reservationOption).fetchJoin()
+                .leftJoin(reservationOption.postOption, postOption).fetchJoin()
+                .where(reservation.id.eq(id))
+                .fetchOne();
+
+        return Optional.ofNullable(result);
     }
 
     // ===== 동적 조건 메서드 (Report 예시 스타일) =====
