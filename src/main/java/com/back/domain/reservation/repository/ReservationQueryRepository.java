@@ -1,6 +1,7 @@
 package com.back.domain.reservation.repository;
 
-import com.back.domain.member.member.entity.Member;
+import com.back.domain.member.entity.Member;
+import com.back.domain.post.post.entity.Post;
 import com.back.domain.reservation.common.ReservationStatus;
 import com.back.domain.reservation.entity.Reservation;
 import com.back.global.queryDsl.CustomQuerydslRepositorySupport;
@@ -14,12 +15,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static com.back.domain.member.entity.QMember.member;
+import static com.back.domain.post.post.entity.QPost.post;
+import static com.back.domain.post.post.entity.QPostImage.postImage;
 import static com.back.domain.post.post.entity.QPostOption.postOption;
 import static com.back.domain.reservation.entity.QReservation.reservation;
 import static com.back.domain.reservation.entity.QReservationOption.reservationOption;
-import static com.back.domain.member.member.entity.QMember.member;
-import static com.back.domain.post.post.entity.QPost.post;
-import static com.back.domain.post.post.entity.QPostImage.postImage;
 
 @Repository
 public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
@@ -128,6 +129,53 @@ public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
                 .from(reservation)
                 .where(
                         reservation.author.eq(author),
+                        reservation.status.eq(status)
+                )
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total);
+    }
+
+    @Override
+    public Page<Reservation> findByPostWithFetch(Post post, Pageable pageable) {
+        List<Reservation> content = selectFrom(reservation)
+                .leftJoin(reservation.reservationOptions, reservationOption).fetchJoin()
+                .leftJoin(reservationOption.postOption, postOption).fetchJoin()
+                .where(reservation.post.eq(post))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .orderBy(reservation.id.desc())
+                .fetch();
+
+        Long total = select(reservation.count())
+                .from(reservation)
+                .where(reservation.post.eq(post))
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total);
+    }
+
+    @Override
+    public Page<Reservation> findByPostAndStatusWithFetch(
+            Post post,
+            ReservationStatus status,
+            Pageable pageable) {
+        List<Reservation> content = selectFrom(reservation)
+                .leftJoin(reservation.reservationOptions, reservationOption).fetchJoin()
+                .leftJoin(reservationOption.postOption, postOption).fetchJoin()
+                .where(
+                        reservation.post.eq(post),
+                        reservation.status.eq(status)
+                )
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .orderBy(reservation.id.desc())
+                .fetch();
+
+        Long total = select(reservation.count())
+                .from(reservation)
+                .where(
+                        reservation.post.eq(post),
                         reservation.status.eq(status)
                 )
                 .fetchOne();

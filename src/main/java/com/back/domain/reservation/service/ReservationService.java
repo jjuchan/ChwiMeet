@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -172,37 +171,34 @@ public class ReservationService {
         return options;
     }
 
-    public PagePayload<GuestReservationSummaryResBody> getSentReservations(Member author, Pageable pageable, ReservationStatus status, String keyword) {
-        // TODO: post의 제목을 keyword로 검색하도록 수정 필요
-        // TODO: QueryDsl로 변경 예정
+    public PagePayload<GuestReservationSummaryResBody> getSentReservations(
+            Member author,
+            Pageable pageable,
+            ReservationStatus status,
+            String keyword) {
+
         Page<Reservation> reservationPage;
         if (status == null) {
-            reservationPage = reservationRepository.findByAuthor(author, pageable);
+            reservationPage = reservationQueryRepository.findByAuthorWithFetch(author, pageable);
         } else {
-            reservationPage = reservationRepository.findByAuthorAndStatus(author, status, pageable);
+            reservationPage = reservationQueryRepository.findByAuthorAndStatusWithFetch(author, status, pageable);
         }
 
-        // DTO 매핑 및 총 금액 계산 로직 수행
+        // 이제 Lazy Loading 없이 바로 접근 가능
         Page<GuestReservationSummaryResBody> reservationSummaryDtoPage = reservationPage.map(reservation -> {
-
             Post post = reservation.getPost();
-            List<ReservationOption> options = reservation.getReservationOptions(); // Lazy Loading 발생 가능
+            List<ReservationOption> options = reservation.getReservationOptions();
 
-            // 총 금액 계산
             int totalAmount = calculateTotalAmount(reservation, post, options);
-
-            // PostSummary DTO 생성
             GuestReservationSummaryResBody.ReservationPostSummaryDto postSummary = createPostSummaryDto(post);
 
-            // Option DTO 리스트 생성 (ReservationOption -> PostOption을 통해 name, id 가져옴)
             List<OptionDto> optionDtos = options.stream()
                     .map(ro -> new OptionDto(
                             ro.getPostOption().getId(),
-                            ro.getPostOption().getName() // PostOption 엔티티에서 가져옴
+                            ro.getPostOption().getName()
                     ))
-                    .collect(Collectors.toList());
+                    .toList();
 
-            // 최종 DTO 생성
             return new GuestReservationSummaryResBody(
                     reservation,
                     postSummary,
@@ -279,9 +275,9 @@ public class ReservationService {
 
         Page<Reservation> reservationPage;
         if (status == null) {
-            reservationPage = reservationRepository.findByPost(post, pageable);
+            reservationPage = reservationQueryRepository.findByPostWithFetch(post, pageable);
         } else {
-            reservationPage = reservationRepository.findByPostAndStatus(post, status, pageable);
+            reservationPage = reservationQueryRepository.findByPostAndStatusWithFetch(post, status, pageable);
         }
 
         Page<HostReservationSummaryResBody> reservationSummaryDtoPage = reservationPage.map(reservation -> {

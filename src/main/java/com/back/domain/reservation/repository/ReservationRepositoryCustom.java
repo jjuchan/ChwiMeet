@@ -1,6 +1,7 @@
 package com.back.domain.reservation.repository;
 
-import com.back.domain.member.member.entity.Member;
+import com.back.domain.member.entity.Member;
+import com.back.domain.post.post.entity.Post;
 import com.back.domain.reservation.common.ReservationStatus;
 import com.back.domain.reservation.entity.Reservation;
 import org.springframework.data.domain.Page;
@@ -23,8 +24,15 @@ public interface ReservationRepositoryCustom {
 
     Page<Reservation> findByAuthorWithFetch(Member author, Pageable pageable);
 
-    public Page<Reservation> findByAuthorAndStatusWithFetch(
+    Page<Reservation> findByAuthorAndStatusWithFetch(
             Member author,
+            ReservationStatus status,
+            Pageable pageable);
+
+    Page<Reservation> findByPostWithFetch(Post post, Pageable pageable);
+
+    public Page<Reservation> findByPostAndStatusWithFetch(
+            Post post,
             ReservationStatus status,
             Pageable pageable);
 }
