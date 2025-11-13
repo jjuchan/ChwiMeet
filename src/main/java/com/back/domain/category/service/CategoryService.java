@@ -65,7 +65,7 @@ public class CategoryService {
                 () -> new ServiceException(HttpStatus.NOT_FOUND, "%d번 카테고리는 존재하지 않습니다.".formatted(categoryId))
         );
 
-        category.setName(categoryUpdateReqBody.name());
+        category.modify(categoryUpdateReqBody);
         return CategoryResBody.of(category);
     }
 

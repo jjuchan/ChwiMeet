@@ -1,5 +1,6 @@
 package com.back.domain.category.entity;
 
+import com.back.domain.category.dto.CategoryUpdateReqBody;
 import com.back.global.jpa.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,7 +15,6 @@ import java.util.List;
 @AllArgsConstructor
 public class Category extends BaseEntity {
 
-    @Setter
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -23,4 +23,8 @@ public class Category extends BaseEntity {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<Category> children = new ArrayList<>();
+
+    public void modify(CategoryUpdateReqBody categoryUpdateReqBody) {
+        this.name = categoryUpdateReqBody.name();
+    }
 }

@@ -1,5 +1,6 @@
 package com.back.domain.region.entity;
 
+import com.back.domain.region.dto.RegionUpdateReqBody;
 import com.back.global.jpa.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,7 +15,6 @@ import java.util.List;
 @AllArgsConstructor
 public class Region extends BaseEntity {
 
-    @Setter
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -23,4 +23,8 @@ public class Region extends BaseEntity {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<Region> children = new ArrayList<>();
+
+    public void modify(RegionUpdateReqBody regionUpdateReqBody) {
+        this.name = regionUpdateReqBody.name();
+    }
 }

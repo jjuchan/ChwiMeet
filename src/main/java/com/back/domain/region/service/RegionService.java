@@ -65,7 +65,7 @@ public class RegionService {
                 () -> new ServiceException(HttpStatus.NOT_FOUND, "%d번 지역은 존재하지 않습니다.".formatted(regionId))
         );
 
-        region.setName(regionUpdateReqBody.name());
+        region.modify(regionUpdateReqBody);
         return RegionResBody.of(region);
     }
 
