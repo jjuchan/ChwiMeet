@@ -2,6 +2,7 @@ package com.back.domain.report.controller;
 
 import com.back.domain.report.common.ReportType;
 import com.back.domain.report.dto.ReportResBody;
+import com.back.global.rsData.RsData;
 import com.back.standard.util.page.PagePayload;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,5 +13,5 @@ import org.springframework.http.ResponseEntity;
 public interface ReportAdmApi {
 
     @Operation(summary = "신고 목록 조회 API (관리자용)", description = "관리자에 한해 신고 목록을 조회합니다.")
-    ResponseEntity<PagePayload<ReportResBody>> getReports(Pageable pageable, ReportType reportType);
+    ResponseEntity<RsData<PagePayload<ReportResBody>>> getReports(Pageable pageable, ReportType reportType);
 }
