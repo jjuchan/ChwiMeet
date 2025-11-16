@@ -23,7 +23,7 @@ public class ReviewService {
     private final ReservationRepository reservationRepository;
 
     @Transactional
-    public void writeReview(Long reservationId, ReviewWriteReqBody reqBody, Long authorId) {
+    public Review writeReview(Long reservationId, ReviewWriteReqBody reqBody, Long authorId) {
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow(
                 () -> new ServiceException(HttpStatus.NOT_FOUND, "예약 정보를 찾을 수 없습니다.")
         );
@@ -38,7 +38,7 @@ public class ReviewService {
             throw new ServiceException(HttpStatus.BAD_REQUEST, "리뷰를 작성할 수 없는 예약 상태입니다.");
         }
 
-        reviewRepository.save(Review.create(reservation, reqBody));
+        return reviewRepository.save(Review.create(reservation, reqBody));
     }
 
 
