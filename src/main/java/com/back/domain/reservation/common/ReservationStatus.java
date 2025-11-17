@@ -42,7 +42,7 @@ public enum ReservationStatus {
         transitions.put(PENDING_PAYMENT, Set.of(PENDING_PICKUP, CANCELLED));
         transitions.put(PENDING_PICKUP, Set.of(SHIPPING, INSPECTING_RENTAL, CANCELLED));
         transitions.put(SHIPPING, Set.of(INSPECTING_RENTAL));
-        transitions.put(INSPECTING_RENTAL, Set.of(RENTING, CANCELLED));
+        transitions.put(INSPECTING_RENTAL, Set.of(RENTING, PENDING_RETURN)); // 취소 → 반납 대기
         transitions.put(RENTING, Set.of(PENDING_RETURN, LOST_OR_UNRETURNED));
         transitions.put(PENDING_RETURN, Set.of(RETURNING, RETURN_COMPLETED));
         transitions.put(RETURNING, Set.of(RETURN_COMPLETED));

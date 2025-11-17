@@ -337,13 +337,22 @@ public class ReservationService {
                     reqBody.returnCarrier(),
                     reqBody.returnTrackingNumber()
             );
+            // 반납 대기
+            case PENDING_RETURN -> {
+                // 대여 검수 -> 반납 대기 (검수 실패)
+                if (reservation.getStatus() == ReservationStatus.INSPECTING_RENTAL) {
+                    reservation.failRentalInspection(reqBody.cancelReason());
+                } else {
+                    // 대여 중 -> 반납 대기 (정상 반납 요청)
+                    reservation.changeStatus(reqBody.status());
+                }
+            }
 
             // 단순 상태 전환 (명시적으로 나열)
             case PENDING_PAYMENT,
                  PENDING_PICKUP,
                  INSPECTING_RENTAL,
                  RENTING,
-                 PENDING_RETURN,
                  RETURN_COMPLETED,
                  INSPECTING_RETURN,
                  PENDING_REFUND,

@@ -133,6 +133,15 @@ public class Reservation extends BaseEntity {
     }
 
     /**
+     * 대여 검수 → 반납 대기 (검수 중 문제 발견)
+     */
+    public void failRentalInspection(String reason) {
+        validateTransition(ReservationStatus.PENDING_RETURN);
+        this.status = ReservationStatus.PENDING_RETURN;
+        this.cancelReason = reason;  // 검수 실패 사유
+    }
+
+    /**
      * 배송 시작 (배송 정보 필요)
      */
     public void startShipping(String receiveCarrier, String receiveTrackingNumber) {
