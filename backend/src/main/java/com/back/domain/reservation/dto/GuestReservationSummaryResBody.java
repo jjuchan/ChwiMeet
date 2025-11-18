@@ -16,8 +16,8 @@ public record GuestReservationSummaryResBody(
         ReservationDeliveryMethod returnMethod,
         String cancelReason,
         String rejectReason,
-        LocalDate reservationStartAt,
-        LocalDate reservationEndAt,
+        LocalDateTime reservationStartAt,
+        LocalDateTime reservationEndAt,
         LocalDateTime createdAt,
         LocalDateTime modifiedAt,
         List<OptionDto> option, // 선택된 옵션 정보

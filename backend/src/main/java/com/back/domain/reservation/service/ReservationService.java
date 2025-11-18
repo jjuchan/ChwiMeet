@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -92,7 +93,7 @@ public class ReservationService {
     }
 
     // 기간 중복 체크
-    private void validateNoOverlappingReservation(Long postId, LocalDate start, LocalDate end, Long excludeId) {
+    private void validateNoOverlappingReservation(Long postId, LocalDateTime start, LocalDateTime end, Long excludeId) {
         boolean hasOverlap = reservationQueryRepository.existsOverlappingReservation(
                 postId, start, end, excludeId
         );
