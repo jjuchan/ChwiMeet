@@ -2,9 +2,11 @@ package com.back.domain.member.service;
 
 import com.back.domain.member.common.MemberRole;
 import com.back.domain.member.dto.MemberJoinReqBody;
+import com.back.domain.member.dto.MemberUpdateReqBody;
 import com.back.domain.member.entity.Member;
 import com.back.domain.member.repository.MemberRepository;
 import com.back.global.exception.ServiceException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,5 +48,12 @@ public class MemberService {
         if (!passwordEncoder.matches(password, member.getPassword())) {
             throw new ServiceException(HttpStatus.NOT_FOUND, "비밀번호가 올바르지 않습니다.");
         }
+    }
+
+    public Member updateMember(Long memberId, MemberUpdateReqBody reqBody) {
+        // TODO: 이미지 업데이트 기능 추가
+        Member member = getById(memberId);
+        member.updateMember(reqBody);
+        return memberRepository.save(member);
     }
 }

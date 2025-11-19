@@ -1,9 +1,6 @@
 package com.back.domain.member.controller;
 
-import com.back.domain.member.dto.MemberDto;
-import com.back.domain.member.dto.MemberJoinReqBody;
-import com.back.domain.member.dto.MemberLoginReqBody;
-import com.back.domain.member.dto.SimpleMemberDto;
+import com.back.domain.member.dto.*;
 import com.back.global.rsData.RsData;
 import com.back.global.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +26,12 @@ public interface MemberApi {
     @Operation(summary = "내 정보 조회", description = "로그인한 회원의 정보를 조회합니다.")
     ResponseEntity<RsData<MemberDto>> me(
             @AuthenticationPrincipal SecurityUser securityUser
+    );
+
+    @Operation(summary = "내 정보 수정", description = "로그인한 회원의 정보를 수정합니다.")
+    ResponseEntity<RsData<MemberDto>> updateMe(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody MemberUpdateReqBody reqBody
     );
 
     @Operation(summary = "사용자 조회(일반 회원)", description = "ID로 회원 정보를 조회합니다.")

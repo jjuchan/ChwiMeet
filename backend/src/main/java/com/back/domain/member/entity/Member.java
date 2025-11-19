@@ -1,6 +1,7 @@
 package com.back.domain.member.entity;
 
 import com.back.domain.member.common.MemberRole;
+import com.back.domain.member.dto.MemberUpdateReqBody;
 import com.back.global.jpa.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -67,5 +68,12 @@ public class Member extends BaseEntity {
 
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    public void updateMember(MemberUpdateReqBody reqBody) {
+        this.address1 = reqBody.address1();
+        this.address2 = reqBody.address2();
+        this.nickname = reqBody.nickname();
+        this.phoneNumber = reqBody.phoneNumber();
     }
 }

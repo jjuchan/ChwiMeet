@@ -1,9 +1,6 @@
 package com.back.domain.member.controller;
 
-import com.back.domain.member.dto.MemberDto;
-import com.back.domain.member.dto.MemberJoinReqBody;
-import com.back.domain.member.dto.MemberLoginReqBody;
-import com.back.domain.member.dto.SimpleMemberDto;
+import com.back.domain.member.dto.*;
 import com.back.domain.member.entity.Member;
 import com.back.domain.member.service.AuthTokenService;
 import com.back.domain.member.service.MemberService;
@@ -75,6 +72,16 @@ public class MemberController implements MemberApi{
         Member member = memberService.getById(securityUser.getId());
 
         return ResponseEntity.ok(new RsData<>(HttpStatus.OK, "현재 회원 정보입니다.", new MemberDto(member)));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<RsData<MemberDto>> updateMe(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody MemberUpdateReqBody reqBody
+    ) {
+        Member member = memberService.updateMember(securityUser.getId(), reqBody);
+
+        return ResponseEntity.ok(new RsData<>(HttpStatus.OK, "회원 정보가 수정되었습니다.", new MemberDto(member)));
     }
 
     @GetMapping("/{id}")

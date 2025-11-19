@@ -1,0 +1,15 @@
+package com.back.domain.member.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record MemberUpdateReqBody(
+        @NotBlank
+        String address1,
+        @NotBlank
+        String address2,
+        @NotBlank
+        String nickname,
+        @NotBlank
+        String phoneNumber
+) {
+}
