@@ -8,13 +8,15 @@ import java.time.LocalDateTime;
 public record ReservationLogDto(
         Long id,
         ReservationStatus status,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String authorName
 ) {
-    public ReservationLogDto(ReservationLog log) {
+    public ReservationLogDto(ReservationLog log, String authorName) {
         this(
                 log.getId(),
                 log.getStatus(),
-                log.getCreatedAt()
+                log.getCreatedAt(),
+                authorName
         );
     }
 }
