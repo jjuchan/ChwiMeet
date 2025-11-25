@@ -7,7 +7,6 @@ import com.back.domain.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
-import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +28,7 @@ public class PostSearchService {
 
     public List<PostListResBody> searchPosts(String query, Long memberId) {
 
-        List<Long> postIds = postVectorService.searchPostIds(query, 10);
+        List<Long> postIds = postVectorService.searchPostIds(query, 3);
 
         if (postIds.isEmpty()) return List.of();
 
@@ -53,14 +52,20 @@ public class PostSearchService {
                 .toList();
     }
 
-    public String searchWithLLM(String query) {
+    public String searchWithLLM(String query, List<PostListResBody> posts) {
 
-        List<Document> docs = postVectorService.searchDocuments(query, 3);
-
-
-        String context = docs.stream()
-                .map(Document::getText)
-                .filter(Objects::nonNull)
+        String context = posts.stream()
+                .map(p -> """
+                        제목: %s
+                        카테고리ID: %d
+                        가격: %d원
+                        지역ID들: %s
+                        """.formatted(
+                        p.title(),
+                        p.categoryId(),
+                        p.fee(),
+                        p.regionIds()
+                ))
                 .collect(Collectors.joining("\n\n"));
 
         String prompt = """
@@ -81,4 +86,5 @@ public class PostSearchService {
                 .call()
                 .content();
     }
+
 }
