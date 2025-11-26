@@ -20,6 +20,7 @@ import com.back.domain.reservation.repository.ReservationRepository;
 import com.back.domain.reservation.scheduler.ReservationRemindScheduler;
 import com.back.domain.review.repository.ReviewQueryRepository;
 import com.back.global.exception.ServiceException;
+import com.back.global.s3.S3Uploader;
 import com.back.standard.util.page.PagePayload;
 import com.back.standard.util.page.PageUt;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class ReservationService {
     private final ReviewQueryRepository reviewQueryRepository;
     private final MemberRepository memberRepository;
     private final PostService postService;
+    private final S3Uploader s3;
 
     private final ReservationRemindScheduler reminderScheduler;
 
@@ -261,13 +263,13 @@ public class ReservationService {
                 new AuthorDto(
                         post.getAuthor().getId(),
                         post.getAuthor().getNickname(),
-                        post.getAuthor().getProfileImgUrl()
+                        s3.generatePresignedUrl(post.getAuthor().getProfileImgUrl())
                 );
 
         String thumbnailUrl = post.getImages().stream()
                 .filter(img -> img.getIsPrimary() != null && img.getIsPrimary())
                 .findFirst()
-                .map(img -> img.getImageUrl())
+                .map(img -> s3.generatePresignedUrl(img.getImageUrl()))
                 .orElse(null);
 
         return new GuestReservationSummaryResBody.ReservationPostSummaryDto(
@@ -306,11 +308,13 @@ public class ReservationService {
                     ))
                     .toList();
 
+            String profileImgUrl = s3.generatePresignedUrl(reservation.getAuthor().getProfileImgUrl());
             // 최종 DTO 생성 (HostReservationSummaryResBody의 생성자 사용)
             return new HostReservationSummaryResBody(
                     reservation,
                     optionDtos,
-                    totalAmount
+                    totalAmount,
+                    profileImgUrl
             );
         });
 
@@ -528,11 +532,14 @@ public class ReservationService {
                 })
                 .toList();
 
+        String profileImgUrl = s3.generatePresignedUrl(reservation.getAuthor().getProfileImgUrl());
+
         return new ReservationDto(
                 reservation,
                 optionDtos,
                 logDtos,
-                totalAmount
+                totalAmount,
+                profileImgUrl
         );
     }
 }
