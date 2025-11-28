@@ -25,10 +25,6 @@ public class ReviewQueryRepository extends CustomQuerydslRepositorySupport {
         super(Review.class);
     }
 
-    private static float roundValue(double value) {
-        return (float) (Math.round(value * 10) / 10.0);
-    }
-
     public Page<ReviewDto> findPostReceivedReviews(Pageable pageable, Long postId){
         return applyPagination(pageable,
                 contentQuery -> contentQuery
