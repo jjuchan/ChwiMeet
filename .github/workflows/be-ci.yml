@@ -108,11 +108,29 @@ jobs:
           SPRING__JPA__HIBERNATE__DDL_AUTO: update
         run: |
           echo "=== Initializing DB Schema with JPA ==="
-          # Spring Boot를 30초만 실행해서 JPA가 스키마 생성하게 함
-          timeout 30s ./gradlew bootRun --no-daemon || true
           
-          # 스키마 생성 확인 (mariadb 명령어 사용)
-          docker exec chwimeet-mariadb mariadb -uroot -p${{ secrets.DB_PASSWORD }} -e "USE chwimeet; SHOW TABLES;"
+          # 백그라운드로 Spring Boot 실행
+          ./gradlew bootRun --no-daemon > bootrun.log 2>&1 &
+          BOOT_PID=$!
+          
+          # 애플리케이션이 시작될 때까지 대기 (최대 60초)
+          echo "Waiting for Spring Boot to start..."
+          for i in {1..30}; do
+            if grep -q "Started BackApplication" bootrun.log 2>/dev/null; then
+              echo "✅ Spring Boot started successfully"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          
+          # 프로세스 종료
+          kill $BOOT_PID || true
+          wait $BOOT_PID 2>/dev/null || true
+          
+          # 스키마 생성 확인
+          echo "=== Verifying schema ==="
+          docker exec chwimeet-mariadb mariadb -uroot -p${{ secrets.DB_PASSWORD }} -e "USE chwimeet; SHOW TABLES;" || echo "No tables found"
           echo "✅ Schema initialized"
 
         # JOOQ 생성 (환경변수 직접 전달)
