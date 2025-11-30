@@ -186,6 +186,7 @@ public class ReservationQueryRepository extends CustomQuerydslRepositorySupport
                 )
                 .groupBy(category.id, category.name)
                 .orderBy(reservation.count().desc(), post.fee.sum().desc())
+                .fetch();
     }
     
     public List<Reservation> findWithPostAndAuthorByStatus(ReservationStatus status) {
