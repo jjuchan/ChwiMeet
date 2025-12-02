@@ -1,23 +1,10 @@
 package com.back.domain.post.service;
 
-import com.back.domain.category.entity.Category;
-import com.back.domain.category.repository.CategoryRepository;
-import com.back.domain.member.entity.Member;
-import com.back.domain.member.repository.MemberRepository;
-import com.back.domain.post.dto.req.PostCreateReqBody;
-import com.back.domain.post.dto.req.PostEmbeddingDto;
-import com.back.domain.post.dto.req.PostUpdateReqBody;
-import com.back.domain.post.dto.res.*;
-import com.back.domain.post.entity.*;
-import com.back.domain.post.repository.*;
-import com.back.domain.region.entity.Region;
-import com.back.domain.region.repository.RegionRepository;
-import com.back.global.exception.ServiceException;
-import com.back.global.s3.S3Uploader;
-import com.back.standard.util.page.PagePayload;
-import com.back.standard.util.page.PageUt;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -25,10 +12,37 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import com.back.domain.category.entity.Category;
+import com.back.domain.category.repository.CategoryRepository;
+import com.back.domain.member.entity.Member;
+import com.back.domain.member.repository.MemberRepository;
+import com.back.domain.post.dto.req.PostCreateReqBody;
+import com.back.domain.post.dto.req.PostEmbeddingDto;
+import com.back.domain.post.dto.req.PostUpdateReqBody;
+import com.back.domain.post.dto.res.PostBannedResBody;
+import com.back.domain.post.dto.res.PostCreateResBody;
+import com.back.domain.post.dto.res.PostDetailResBody;
+import com.back.domain.post.dto.res.PostImageResBody;
+import com.back.domain.post.dto.res.PostListResBody;
+import com.back.domain.post.entity.Post;
+import com.back.domain.post.entity.PostFavorite;
+import com.back.domain.post.entity.PostImage;
+import com.back.domain.post.entity.PostOption;
+import com.back.domain.post.entity.PostRegion;
+import com.back.domain.post.repository.PostFavoriteQueryRepository;
+import com.back.domain.post.repository.PostFavoriteRepository;
+import com.back.domain.post.repository.PostOptionRepository;
+import com.back.domain.post.repository.PostQueryRepository;
+import com.back.domain.post.repository.PostRepository;
+import com.back.domain.region.entity.Region;
+import com.back.domain.region.repository.RegionRepository;
+import com.back.global.exception.ServiceException;
+import com.back.global.s3.S3Uploader;
+import com.back.standard.util.page.PagePayload;
+import com.back.standard.util.page.PageUt;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -49,7 +63,7 @@ public class PostService {
 	private final CategoryRepository categoryRepository;
 
 	@Transactional
-	public PostCreateResBody createPost(PostCreateReqBody reqBody, List<MultipartFile> files, Long memberId) {
+	public PostCreateResBody createPost(PostCreateReqBody reqBody, List<MultipartFile> images, Long memberId) {
 
 		Member author = this.memberRepository.findById(memberId)
 			.orElseThrow(() -> new ServiceException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
@@ -57,13 +71,13 @@ public class PostService {
 		Category category = this.categoryRepository.findById(reqBody.categoryId())
 			.orElseThrow(() -> new ServiceException(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."));
 
-		if (files == null || files.isEmpty()) {
+		if (images == null || images.isEmpty()) {
 			throw new ServiceException(HttpStatus.BAD_REQUEST, "이미지는 최소 1개 이상 등록해야 합니다.");
 		}
 
 		if (reqBody.images() == null ||
 			reqBody.images().isEmpty() ||
-			reqBody.images().size() != files.size()) {
+			reqBody.images().size() != images.size()) {
 
 			throw new ServiceException(HttpStatus.BAD_REQUEST,
 				"이미지 정보(images)와 업로드한 파일 개수가 일치해야 합니다.");
@@ -85,12 +99,12 @@ public class PostService {
 			post.getOptions().addAll(postOptions);
 		}
 
-		if (files != null && !files.isEmpty()) {
+		if (images != null && !images.isEmpty()) {
 
 			List<PostImage> postImages = new ArrayList<>();
 
-			for (int i = 0; i < files.size(); i++) {
-				MultipartFile file = files.get(i);
+			for (int i = 0; i < images.size(); i++) {
+				MultipartFile file = images.get(i);
 
 				String url = s3.upload(file);
 
@@ -234,7 +248,7 @@ public class PostService {
 	}
 
 	@Transactional
-	public void updatePost(Long postId, PostUpdateReqBody reqBody, List<MultipartFile> files, long memberId) {
+	public void updatePost(Long postId, PostUpdateReqBody reqBody, List<MultipartFile> images, long memberId) {
 
 		Post post = this.postRepository.findById(postId)
 			.orElseThrow(() -> new ServiceException(HttpStatus.NOT_FOUND, "존재하지 않는 게시글입니다."));
@@ -243,13 +257,13 @@ public class PostService {
 			throw new ServiceException(HttpStatus.FORBIDDEN, "본인의 게시글만 수정할 수 있습니다.");
 		}
 
-		if (files == null || files.isEmpty()) {
+		if (images == null || images.isEmpty()) {
 			throw new ServiceException(HttpStatus.BAD_REQUEST, "이미지는 최소 1개 이상 등록해야 합니다.");
 		}
 
 		if (reqBody.images() == null ||
 			reqBody.images().isEmpty() ||
-			reqBody.images().size() != files.size()) {
+			reqBody.images().size() != images.size()) {
 
 			throw new ServiceException(HttpStatus.BAD_REQUEST,
 				"이미지 정보(images)와 업로드한 파일 개수가 일치해야 합니다.");
@@ -288,8 +302,8 @@ public class PostService {
 
 		List<PostImage> newImages = new ArrayList<>();
 
-		for (int i = 0; i < files.size(); i++) {
-			MultipartFile file = files.get(i);
+		for (int i = 0; i < images.size(); i++) {
+			MultipartFile file = images.get(i);
 
 			String uploadedUrl = s3.upload(file);
 
@@ -393,11 +407,11 @@ public class PostService {
 
 		// 3️⃣ 실제로 선점된 게시글만 필터링 (낙관적 락 검증)
 		List<PostEmbeddingDto> acquiredPosts = postTransactionService
-				.verifyAcquiredPosts(postDtos);
+			.verifyAcquiredPosts(postDtos);
 
 		log.info("실제 선점 성공: {}건 (다른 워커 선점: {}건)",
-				acquiredPosts.size(),
-				postDtos.size() - acquiredPosts.size());
+			acquiredPosts.size(),
+			postDtos.size() - acquiredPosts.size());
 
 		// 4️⃣ 임베딩 처리
 		int successCount = 0;
