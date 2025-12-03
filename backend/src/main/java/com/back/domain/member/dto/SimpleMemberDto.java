@@ -11,7 +11,7 @@ public record SimpleMemberDto(
         Boolean isBanned,
         LocalDateTime createdAt
 ) {
-    public SimpleMemberDto(Member member){
+    public SimpleMemberDto(Member member, String profileImgUrl){
         this(
                 member.getId(),
                 member.getNickname(),
