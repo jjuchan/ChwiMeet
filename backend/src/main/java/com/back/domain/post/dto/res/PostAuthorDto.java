@@ -8,7 +8,7 @@ public record PostAuthorDto(
         String nickname,
         String profileImgUrl
 ) {
-    public static PostAuthorDto from(Member member) {
+    public static PostAuthorDto from(Member member, String profileImgUrl) {
         return new PostAuthorDto(
                 member.getId(),
                 member.getNickname(),
