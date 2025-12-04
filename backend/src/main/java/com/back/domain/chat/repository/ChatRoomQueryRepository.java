@@ -1,6 +1,5 @@
 package com.back.domain.chat.repository;
 
-import com.back.domain.chat.dto.ChatMessageDto;
 import com.back.domain.chat.dto.ChatPostDto;
 import com.back.domain.chat.dto.ChatRoomListDto;
 import com.back.domain.chat.dto.OtherMemberDto;
@@ -22,7 +21,6 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import static com.back.domain.chat.entity.QChatMember.chatMember;
-import static com.back.domain.chat.entity.QChatMessage.chatMessage;
 import static com.back.domain.chat.entity.QChatRoom.chatRoom;
 import static com.back.domain.member.entity.QMember.member;
 
