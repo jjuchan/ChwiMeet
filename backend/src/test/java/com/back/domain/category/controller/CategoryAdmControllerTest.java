@@ -18,8 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,7 +61,7 @@ class CategoryAdmControllerTest {
                 .andExpect(jsonPath("$.data.child").isEmpty());
 
         List<Category> all = categoryRepository.findAll();
-        assertTrue(all.stream().anyMatch(r -> r.getName().equals("새 카테고리")));
+        assertThat(all).anyMatch(c -> c.getName().equals("새 카테고리"));
     }
 
     @Test
@@ -86,7 +86,7 @@ class CategoryAdmControllerTest {
                 .andExpect(jsonPath("$.data.child", hasSize(3)));
 
         Category updated = categoryRepository.findById(1L).orElseThrow();
-        assertEquals("수정된 카테고리", updated.getName());
+        assertThat(updated.getName()).isEqualTo("수정된 카테고리");
     }
 
     @Test
@@ -100,6 +100,6 @@ class CategoryAdmControllerTest {
                 .andExpect(jsonPath("$.msg").value("카테고리 삭제 성공"))
                 .andExpect(jsonPath("$.data").doesNotExist());
 
-        assertFalse(categoryRepository.existsById(1L));
+        assertThat(categoryRepository.existsById(1L)).isFalse();
     }
 }
