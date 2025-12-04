@@ -56,4 +56,15 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.msg").value("알림 목록 조회"))
                 .andExpect(jsonPath("$.data.content").isArray());
     }
+
+    @Test
+    @DisplayName("읽지 않은 알림 존재 여부 조회")
+    @WithUserDetails(value = "user1@example.com")
+    void hasUnread_shouldReturnUnreadFlag() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications/unread"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.msg").value("읽지 않은 알림 존재 여부"))
+                .andExpect(jsonPath("$.data.hasUnread").isBoolean());
+    }
 }
