@@ -42,7 +42,13 @@ class PostControllerTest {
 		mockMvc.perform(get("/api/v1/posts/{id}", 1L))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.title").exists())
-			.andExpect(jsonPath("$.data.id").value(1L));
+			.andExpect(jsonPath("$.data.id").value(1L))
+			.andExpect(jsonPath("$.data.images").isArray())
+			.andExpect(jsonPath("$.data.images.length()").value(1))
+			.andExpect(jsonPath("$.data.options").isArray())
+			.andExpect(jsonPath("$.data.options.length()").value(1))
+			.andExpect(jsonPath("$.data.regionIds").isArray())
+			.andExpect(jsonPath("$.data.regionIds.length()").value(1));
 	}
 
 	@Test
@@ -115,5 +121,5 @@ class PostControllerTest {
 			.andExpect(jsonPath("$.data.content").isArray())
 			.andExpect(jsonPath("$.data.content.length()").value(3));
 	}
-	
+
 }
