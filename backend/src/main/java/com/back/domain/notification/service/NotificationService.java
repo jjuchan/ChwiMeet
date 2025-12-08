@@ -1,6 +1,5 @@
 package com.back.domain.notification.service;
 
-import com.back.domain.member.entity.Member;
 import com.back.domain.member.repository.MemberRepository;
 import com.back.domain.notification.common.NotificationData;
 import com.back.domain.notification.common.NotificationType;
