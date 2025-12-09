@@ -1,13 +1,11 @@
 package com.back.domain.reservation.controller;
 
-import com.back.BaseContainerIntegrationTest;
 import com.back.config.TestConfig;
 import com.back.domain.reservation.common.ReservationDeliveryMethod;
 import com.back.domain.reservation.common.ReservationStatus;
 import com.back.domain.reservation.dto.UpdateReservationReqBody;
 import com.back.domain.reservation.dto.UpdateReservationStatusReqBody;
 import com.back.domain.reservation.repository.ReservationRepository;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,10 +32,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.hamcrest.Matchers.*;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -56,10 +54,10 @@ import static org.hamcrest.Matchers.*;
 class ReservationControllerTest{
 
     @Autowired
-    MockMvc mockMvc;
+    private MockMvc mockMvc;
 
     @Autowired
-    protected ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     @Autowired
     private ReservationRepository reservationRepository;

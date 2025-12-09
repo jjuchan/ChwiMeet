@@ -1,7 +1,6 @@
 package com.back.domain.post.controller;
 
 import com.back.config.TestConfig;
-import com.back.domain.post.service.PostVectorService;
 import com.back.global.s3.S3Uploader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
