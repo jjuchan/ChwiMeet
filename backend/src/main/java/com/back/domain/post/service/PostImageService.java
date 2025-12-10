@@ -36,7 +36,7 @@ public class PostImageService {
 		List<PostImage> result = new ArrayList<>();
 
 		for (int i = 0; i < files.size(); i++) {
-			String url = s3.upload(files.get(i), S3FolderType.POST_IMAGE);
+			String url = s3.upload(files.get(i), S3FolderType.POST_IMAGE_ORIGINAL);
 			boolean isPrimary = reqBodies.get(i).isPrimary();
 			result.add(new PostImage(post, url, isPrimary));
 		}
@@ -76,7 +76,7 @@ public class PostImageService {
 					throw new ServiceException(HttpStatus.BAD_REQUEST, "이미지 정보와 파일 개수가 일치하지 않습니다.");
 				}
 
-				String url = s3.upload(files.get(fileIndex), S3FolderType.POST_IMAGE);
+				String url = s3.upload(files.get(fileIndex), S3FolderType.POST_IMAGE_ORIGINAL);
 				result.add(new PostImage(post, url, req.isPrimary()));
 				fileIndex++;
 			}
