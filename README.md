@@ -304,7 +304,7 @@ public void publish(Long chatRoomId, ChatMessageDto dto) {
 </details>
 
 <details>
-<summary><strong>🔥 2-Stage-RAG 기반 AI 게시글 검색</strong></summary>
+<summary><strong>🔍 2-Stage-RAG 기반 AI 게시글 검색</strong></summary>
   
 ## 도입 배경
 
