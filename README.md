@@ -476,6 +476,242 @@ spring:
 
 <summary><strong>게시글 임베딩 Quartz 기반 배치 시 동시성 이슈</strong></summary>
 
+
+### 문제 상황
+
+Quartz 기반 게시글 임베딩 배치 작업을 운영하면서,  
+**여러 워커가 동일한 게시글을 중복으로 처리하는 문제**가 발생했습니다.
+
+Quartz는 클러스터 모드에서 **배치 작업 자체의 중복 실행**은 방지하지만,  
+같은 작업 내에서 **동일한 데이터를 여러 워커가 처리하는 것**은 막을 수 없었습니다.
+
+실제로 로그를 확인한 결과, 하나의 게시글이 두 개의 워커에서 동시에 임베딩되고,  
+OpenAI API가 중복으로 호출되어 불필요한 비용이 발생하고 있었습니다.
+```
+발생한 시나리오:
+T1: Worker A가 게시글 1~100번 조회
+T1: Worker B가 게시글 1~100번 조회
+T2: Worker A가 게시글 1번 임베딩 시작
+T2: Worker B도 게시글 1번 임베딩 시작 (중복!)
+→ 동일 게시글에 대해 API 2번 호출, 비용 2배 발생
+```
+
+---
+
+### 원인 분석 과정
+
+배치 작업의 처리 흐름을 분석한 결과, 다음과 같은 구조에서 문제가 발생하고 있었습니다.
+
+**기존 처리 방식**
+1. 처리 대상 게시글 조회
+2. 조회한 게시글 리스트를 순차적으로 처리
+3. 처리 완료 후 완료 표시
+
+이 구조에서는 **조회 시점과 처리 시작 시점 사이에 시간차가 발생**하며,  
+이 시간 동안 다른 워커도 동일한 게시글을 조회할 수 있었습니다.
+
+특히 다음과 같은 상황에서 문제가 더 자주 발생했습니다:
+- 배치 작업이 짧은 주기로 실행될 때
+- 처리할 게시글이 많아 작업 시간이 길어질 때
+- 여러 워커가 거의 동시에 배치를 시작할 때
+
+근본 원인은 **"데이터를 조회한다"는 행위 자체가 해당 데이터를 점유하는 것을 보장하지 않는다**는 점이었습니다.
+
+---
+
+### 해결 방안 및 구현
+
+**낙관적 락 기반 선점(Claim) 패턴 도입**
+
+데이터를 조회한 후 처리하는 것이 아니라,  
+**먼저 처리할 데이터를 선점한 후 실제로 선점에 성공한 데이터만 처리**하도록 변경했습니다.
+
+**1. 상태 관리 및 버전 관리 추가**
+```java
+public enum EmbeddingStatus {
+    WAIT,     // 임베딩 대기
+    PENDING,  // 처리 중 (워커가 선점함)
+    DONE      // 완료
+}
+
+@Entity
+public class Post extends BaseEntity {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "embedding_status", nullable = false)
+    private EmbeddingStatus embeddingStatus;
+    
+    @Version
+    @Column(name = "embedding_version", nullable = false)
+    private Long embeddingVersion;
+}
+```
+
+`embeddingStatus`로 현재 처리 단계를 표시하고,  
+JPA의 `@Version`을 통해 동시 수정을 감지하여 낙관적 락을 구현했습니다.
+
+**2. 원자적 상태 업데이트 쿼리**
+```java
+public long bulkUpdateStatusToPendingWithVersion(List<Long> postIds) {
+    return getQueryFactory()
+        .update(post)
+        .set(post.embeddingStatus, EmbeddingStatus.PENDING)
+        .set(post.embeddingVersion, post.embeddingVersion.add(1))  // 버전 증가
+        .where(
+            post.id.in(postIds),
+            post.embeddingStatus.eq(EmbeddingStatus.WAIT)  // 핵심 조건
+        )
+        .execute();
+}
+```
+
+핵심은 `WHERE embeddingStatus = WAIT` 조건입니다.  
+여러 워커가 동시에 같은 게시글을 PENDING으로 변경하려 해도,  
+**데이터베이스 레벨에서 하나의 워커만 성공**하게 됩니다.
+
+**3. 버전 검증을 통한 선점 확인**
+```java
+public List<PostEmbeddingDto> verifyAcquiredPosts(List<PostEmbeddingDto> postDtos) {
+    // 1. 각 게시글의 예상 버전 계산 (기존 버전 + 1)
+    Map<Long, Long> expectedVersions = postDtos.stream()
+        .collect(Collectors.toMap(
+            PostEmbeddingDto::id, 
+            dto -> dto.embeddingVersion() + 1
+        ));
+    
+    // 2. DB에서 현재 버전 조회
+    List<Tuple> results = getQueryFactory()
+        .select(post.id, post.embeddingVersion)
+        .from(post)
+        .where(
+            post.id.in(postIds),
+            post.embeddingStatus.eq(EmbeddingStatus.PENDING)
+        )
+        .fetch();
+    
+    // 3. 버전이 일치하는 게시글만 필터링 (실제 선점 성공)
+    Set<Long> acquiredIds = results.stream()
+        .filter(tuple -> {
+            Long id = tuple.get(post.id);
+            Long currentVersion = tuple.get(post.embeddingVersion);
+            return currentVersion.equals(expectedVersions.get(id));
+        })
+        .map(tuple -> tuple.get(post.id))
+        .collect(Collectors.toSet());
+    
+    return postDtos.stream()
+        .filter(dto -> acquiredIds.contains(dto.id()))
+        .toList();
+}
+```
+
+버전 검증을 통해 이중으로 안전장치를 만들었습니다.  
+만약 다른 워커가 먼저 선점했다면, 버전 불일치로 처리 대상에서 제외됩니다.
+
+**4. 선점 기반 배치 로직**
+```java
+public void embedPostsBatch() {
+    // 1. WAIT 상태 게시글 조회 (embeddingVersion 포함)
+    List<Post> postsToEmbed = postQueryRepository
+        .findPostsToEmbedWithDetails(100);
+    
+    if (postsToEmbed.isEmpty()) {
+        log.info("임베딩할 WAIT 상태의 게시글이 없습니다.");
+        return;
+    }
+    
+    // 2. DTO 변환 (현재 버전 정보 포함)
+    List<PostEmbeddingDto> postDtos = postsToEmbed.stream()
+        .map(PostEmbeddingDto::from)
+        .toList();
+    
+    List<Long> postIds = postDtos.stream()
+        .map(PostEmbeddingDto::id)
+        .toList();
+    
+    // 3. 선점 시도: WAIT → PENDING (버전 +1)
+    long updatedCount = postTransactionService.updateStatusToPending(postIds);
+    
+    if (updatedCount == 0) {
+        log.warn("선점 시도했으나 업데이트된 게시글이 0건입니다.");
+        return;
+    }
+    
+    log.info("총 {}개의 게시글을 PENDING 상태로 선점 시도했습니다.", updatedCount);
+    
+    // 4. 버전 검증으로 실제 선점 성공한 게시글만 필터링
+    List<PostEmbeddingDto> acquiredPosts = 
+        postTransactionService.verifyAcquiredPosts(postDtos);
+    
+    log.info("실제 선점 성공: {}건 (다른 워커 선점: {}건)", 
+        acquiredPosts.size(), 
+        postDtos.size() - acquiredPosts.size());
+    
+    // 5. 임베딩 처리
+    int successCount = 0;
+    int failedCount = 0;
+    
+    for (PostEmbeddingDto dto : acquiredPosts) {
+        try {
+            log.info(">>> 임베딩 시작: Post ID {}", dto.id());
+            postVectorService.indexPost(dto);
+            postTransactionService.updateStatusToDone(dto.id());
+            log.info(">>> 임베딩 성공: Post ID {}", dto.id());
+            successCount++;
+        } catch (Exception e) {
+            log.error(">>> 임베딩 실패: Post ID {}", dto.id(), e);
+            // 실패 시 WAIT로 복원하여 재시도 가능하도록
+            postTransactionService.updateStatusToWait(dto.id());
+            failedCount++;
+        }
+    }
+    
+    log.info("Embedding batch finished. 성공: {}, 실패: {}", 
+        successCount, failedCount);
+}
+```
+
+**개선된 처리 흐름**
+```
+Worker A와 Worker B가 동시에 배치 시작
+
+T1: Worker A - 게시글 1~100번 조회 (모두 version=5, WAIT 상태)
+T1: Worker B - 게시글 1~100번 조회 (모두 version=5, WAIT 상태)
+
+T2: Worker A - UPDATE ... SET version=6, status=PENDING 
+              WHERE id IN (...) AND status=WAIT
+              → 성공 (100건이 version=6, PENDING으로 변경됨)
+              
+T2: Worker B - UPDATE ... SET version=6, status=PENDING 
+              WHERE id IN (...) AND status=WAIT
+              → 실패 (0건, 이미 PENDING이라 WHERE 조건 불만족)
+
+T3: Worker A - 버전 검증: 
+              예상 version=6, 실제 DB version=6 → 100건 일치 확인
+              
+T3: Worker B - 버전 검증: 
+              조회 결과 0건 (작업 종료)
+
+T4: Worker A - 임베딩 처리 (게시글 1~100번)
+T4: Worker B - 다음 배치 대기
+
+T5: Worker A - 성공: PENDING → DONE
+              실패: PENDING → WAIT (버전은 유지, 재시도 가능)
+```
+
+**이중 안전장치**
+
+1. **WHERE 조건**: `status = WAIT`인 게시글만 선점 가능
+2. **버전 검증**: 업데이트 후 예상 버전과 실제 버전이 일치하는지 확인
+
+두 가지 메커니즘으로 동시성 문제를 완벽하게 차단했습니다.
+
+**결과**
+
+- **중복 처리 차단**: DB 조건문과 버전 검증으로 동일 데이터를 여러 워커가 처리하지 않음
+- **API 비용 절감**: 중복 호출 제거로 불필요한 OpenAI API 비용 발생 방지
+- **자동 재시도**: 실패한 작업은 WAIT 상태로 복원되어 다음 배치에서 자동 재처리
+- **데이터 정합성**: JPA `@Version`과 트랜잭션으로 안전한 상태 관리
+
 </details>
 
 <br>
