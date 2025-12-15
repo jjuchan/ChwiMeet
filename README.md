@@ -277,7 +277,70 @@
 
 # 🛠️ 기술 스택
 
-<img src="https://img.shields.io/badge/Mariadb-003545?style=for-the-badge&logo=mariadb&logoColor=white" />
+## Frontend
+
+<div>
+  <img src="https://img.shields.io/badge/Next.js-000000?style=flat&logo=nextdotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/React Query-FF4154?style=flat&logo=reactquery&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tailwind CSS-06B6D4?style=flat&logo=tailwindcss&logoColor=white">
+  <img src="https://img.shields.io/badge/Shadcn-000000?style=flat&logo=shadcnui&logoColor=white" />
+  <img src="https://img.shields.io/badge/Radix UI-161618?style=flat&logo=radixui&logoColor=white">
+  <img src="https://img.shields.io/badge/Zustand-2A3FFB?style=flat&logoColor=white">
+  <img src="https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel&logoColor=white">
+  <img src="https://img.shields.io/badge/ESLint-4B32C3?style=flat&logo=eslint&logoColor=white">
+  <img src="https://img.shields.io/badge/Prettier-F7B93E?style=flat&logo=prettier&logoColor=white">
+</div>
+
+## Backend
+
+<div>
+  <img src="https://img.shields.io/badge/Java-007396?style=flat&logo=openjdk&logoColor=white" />
+  <img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=flat&logo=Spring-Boot&logoColor=white" />
+  <img src="https://img.shields.io/badge/Spring_AI-6DB33F?style=flat&logo=%20Data%20JPA&logoColor=white">
+  <img src="https://img.shields.io/badge/Spring_Security-6DB33F?style=flat&logo=springsecurity&logoColor=white" />
+  <img src="https://img.shields.io/badge/Spring_Data_Jpa-6DB33F?style=flat&logo=%20Data%20JPA&logoColor=white">
+  <img src="https://img.shields.io/badge/JWT-black?style=flat&logo=JSON-Web-Tokens&logoColor=white">
+  <img src="https://img.shields.io/badge/Quartz-333333?style=flat&logoColor=white">
+  <img src="https://img.shields.io/badge/Swagger-85EA2D?style=flat&logo=swagger&logoColor=white">
+</div>
+
+## Database
+
+<div>
+  <img src="https://img.shields.io/badge/Mariadb-003545?style=flat&logo=mariadb&logoColor=white" />
+  <img src="https://img.shields.io/badge/Querydsl-blue?style=flat&logoColor=white">
+  <img src="https://img.shields.io/badge/Redis-FF4438?style=flat&logo=redis&logoColor=white" />
+  <img src="https://img.shields.io/badge/Jooq-black?style=flat&logoColor=white" />
+  <img src="https://img.shields.io/badge/Flyway-CC0200?style=flat&logo=flyway&logoColor=white" />
+</div>
+
+## Test & Monitoring
+
+<div>
+  <img src="https://img.shields.io/badge/Junit5-25A162?style=flat&logo=junit5&logoColor=white" />
+  <img src="https://img.shields.io/badge/K6-7D64FF?style=flat&logo=k6&logoColor=white" />
+  <img src="https://img.shields.io/badge/Grafana-F46800?style=flat&logo=grafana&logoColor=white">
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=flat&logo=prometheus&logoColor=white">
+</div>
+
+
+## Infra
+
+<div>
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/Terraform-844FBA?style=flat&logo=terraform&logoColor=white">
+  <img src="https://img.shields.io/badge/Nginx Proxy Manager-F15833?style=flat&logo=nginxproxymanager&logoColor=white">
+  <img src="https://img.shields.io/badge/GitHub Actions-2088FF?style=flat&logo=githubactions&logoColor=white">
+  <img src="https://img.shields.io/badge/AWS EC2-F38020?style=flat&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS Lambda-F38020?style=flat&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS S3-D8352A?style=flat&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS Cloudfront-D8352A?style=flat&logoColor=white" />
+</div>
+
+<br>
+
+<details>
+  <summary><b>MariaDB를 선택한 이유</b></summary>
 
 프로젝트 초기에는 익숙한 관계형 데이터베이스인 MySQL을 사용했지만,
 검색 정확도 향상과 임베딩 기반 분류 기능을 구현하기 위해 **벡터 검색(Vector Search)** 이 필요한 상황이 되었습니다.
@@ -294,19 +357,27 @@ Spring AI에서 MariaDB Vector Store를 기본적으로 지원한다는 점이 �
 즉, 복잡한 커넥터 구현 없이도 임베딩 저장·조회·검색 기능을 기존 Spring Data 스타일로 바로 사용할 수 있어
 개발 속도와 유지보수성이 크게 향상되었습니다.
 
-<img src="https://img.shields.io/badge/Spring_AI-6DB33F?style=for-the-badge&logoColor=white">
+</details>
+
+<details>
+  <summary><b>Spring AI를 선택한 이유</b></summary>
 
 Spring AI는 다양한 AI 모델과 벡터 DB를 추상화된 인터페이스로 제공하여 **특정 벤더나 기술에 종속되지 않고 유연한 확장**이 가능합니다. 또한 **RAG 파이프라인**을 지원하여 임베딩 및 검색, 응답 생성 구조를 쉽고 빠르게 구축할 수 있습니다. 결과적으로 Spring 생태계와의 결합, 유지보수성과 확장성, 그리고 RAG를 효율적으로 개발하기 위해 Spring AI를 선택하였습니다.
 
-<img src="https://img.shields.io/badge/Redis-FF4438?style=for-the-badge&logo=redis&logoColor=white" />
+</details>
+
+<details>
+  <summary><b>Redis를 선택한 이유</b></summary>
 
 채팅 기능을 분산 환경에서도 안정적으로 동작하게 하기 위해 Redis를 도입했습니다. 여러 서버 인스턴스가 동시에 운영되는 환경에서는 단일 서버만으로는 실시간 메시지 전달과 사용자 간 동기화를 보장하기 어렵기 때문에, Redis Pub/Sub을 활용하여 서버 간 메시지를 효율적으로 브로드캐스트하도록 구현했습니다. 이를 통해 어느 서버에 연결된 사용자라도 동일한 채팅 메시지를 즉시 수신할 수 있게 되었으며, 서버 간 메시지 동기화를 Redis에 위임함으로써 구현 복잡도를 줄이고 서버 부담을 최소화할 수 있었습니다. 또한, Redis의 빠른 메시지 전달 특성 덕분에 채팅 서비스의 실시간성을 확보할 수 있었고, 향후 서버 확장(Scale out)에도 유연하게 대응할 수 있는 구조를 마련할 수 있었습니다.
 
 또한 레디스를 캐시 저장소로 사용하였는데, 이는 이미 STOMP Pub/Sub 구조에서 레디스가 구축된 상황에서 도입 비용과 운영 복잡도를 줄이기 위함이었습니다. 그리고 레디스를 단순 캐시 용도가 아니라, **Redisson을 활용한 분산락**을 적용함으로써 다중 인스턴스에서 발생할 수 있는 **캐시 스탬피드 현상**을 제어할 수 있었습니다. 즉, 캐싱을 통한 성능 개선과 분산락을 통한 최적화 및 데이터 정합성 확보를 동시에 만족하기 위해 레디스를 선택하였습니다.
 
-<img src="https://img.shields.io/badge/Quartz-3E4348?style=for-the-badge&logoColor=white" />
+</details>
 
-프로젝트에서는 게시글 임베딩, 예약 상태 자동 변경, 오래된 알림 삭제 등
+<details>
+  <summary><b>Quartz를 선택한 이유</b></summary>
+  프로젝트에서는 게시글 임베딩, 예약 상태 자동 변경, 오래된 알림 삭제 등
 주기적으로 처리해야 하는 작업들이 필요했습니다.
 
 Spring의 `@Scheduled`로도 가능했지만, Blue/Green 배포 시 배치 작업이 중복 실행될 위험과
@@ -314,6 +385,12 @@ Spring의 `@Scheduled`로도 가능했지만, Blue/Green 배포 시 배치 작�
 
 Quartz는 데이터베이스 기반 분산 락으로 여러 인스턴스 환경에서도
 배치 작업이 한 번만 실행되도록 보장하며, 작업 실행 이력을 자동으로 기록합니다.
+</details>
+
+<details>
+  <summary><b>Jooq를 선택한 이유</b></summary>
+
+</details>
 
 <br>
 
