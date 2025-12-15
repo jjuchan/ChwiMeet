@@ -24,9 +24,9 @@
 
 #  📖 목차
 
-1. [🧑‍💻 팀 소개](#-팀-소개)
+1. [🧑‍💻 팀 소개](#-팀-소개-—-일단-진행해-팀)
 2. [💡 개발 배경](#-개발-배경)
-3. [🧩 아키텍처](#-아키텍처)
+3. [🧩 아키텍처](#-아키텍쳐)
 4. [🚀 기능 소개](#-기능-소개)
 5. [🛠️ 기술 스택](#️-기술-스택)
 6. [⚙️ 기능 구현 방식](#️-기능-구현-방식)
@@ -259,7 +259,7 @@ Spring AI는 다양한 AI 모델과 벡터 DB를 추상화된 인터페이스로
 
 <img src="https://img.shields.io/badge/Redis-FF4438?style=for-the-badge&logo=redis&logoColor=white" />
 
-...STOMP Pub/Sub 설명...
+채팅 기능을 분산 환경에서도 안정적으로 동작하게 하기 위해 Redis를 도입했습니다. 여러 서버 인스턴스가 동시에 운영되는 환경에서는 단일 서버만으로는 실시간 메시지 전달과 사용자 간 동기화를 보장하기 어렵기 때문에, Redis Pub/Sub을 활용하여 서버 간 메시지를 효율적으로 브로드캐스트하도록 구현했습니다. 이를 통해 어느 서버에 연결된 사용자라도 동일한 채팅 메시지를 즉시 수신할 수 있게 되었으며, 서버 간 메시지 동기화를 Redis에 위임함으로써 구현 복잡도를 줄이고 서버 부담을 최소화할 수 있었습니다. 또한, Redis의 빠른 메시지 전달 특성 덕분에 채팅 서비스의 실시간성을 확보할 수 있었고, 향후 서버 확장(Scale out)에도 유연하게 대응할 수 있는 구조를 마련할 수 있었습니다.
 
 또한 레디스를 캐시 저장소로 사용하였는데, 이는 이미 STOMP Pub/Sub 구조에서 레디스가 구축된 상황에서 도입 비용과 운영 복잡도를 줄이기 위함이었습니다. 그리고 레디스를 단순 캐시 용도가 아니라, **Redisson을 활용한 분산락**을 적용함으로써 다중 인스턴스에서 발생할 수 있는 **캐시 스탬피드 현상**을 제어할 수 있었습니다. 즉, 캐싱을 통한 성능 개선과 분산락을 통한 최적화 및 데이터 정합성 확보를 동시에 만족하기 위해 레디스를 선택하였습니다.
 
@@ -286,25 +286,32 @@ Quartz는 데이터베이스 기반 분산 락으로 여러 인스턴스 환경�
 
 <br>
 
-### 1. 도입 배경
-초기에는 단일 서버 환경에서 WebSocket 기반 채팅만으로도 충분했지만,
-서비스 특성상 **서버 확장 및 무중단 배포 환경**을 고려하면서
-다음과 같은 한계를 확인했습니다.
+### 도입 배경
+단일 서버 환경에서는 WebSocket 기반 채팅만으로도 충분했지만,   
+**미래의 서버 확장**을 고려하면서 서버 환경에서 발생할 수 있는 메시지 전달 문제를 인지했습니다.
 
-- 다중 서버 환경에서  
-  → 같은 채팅방 사용자라도 서로 다른 서버에 연결될 경우 메시지 전달 불가
-- 서버별 WebSocket 세션 분리로 인한  
-  → 메시지 동기화 및 일관성 문제
-- 배포 또는 서버 재시작 시  
-  → 연결 상태에 따라 채팅 흐름이 끊길 가능성
+예를 들어, 같은 채팅방 사용자라도 서로 다른 서버에 연결될 경우 메시지가 전달되지 않는 상황이 발생할 수 있었습니다.
 
-이를 해결하기 위해 **Redis Pub/Sub을 메시지 브로커로 사용하는 구조**를 도입했습니다.
+이를 해결하기 위해 Redis Pub/Sub을 메시지 브로커로 활용하는 구조를 도입했습니다.
 
 ---
 
-### 2. 구조 및 동작 방식
+### 구조 및 동작 방식
 채팅 메시지는 다음 흐름으로 처리됩니다.
 
+```
+사용자
+  │
+  ▼
+[WebSocket 서버] 
+  │
+  ▼
+[Redis Channel] ── 브로드캐스트 ──> [다른 서버 인스턴스]
+  │                                  │
+  ▼                                  ▼
+사용자                             사용자
+
+```
 1. 사용자가 채팅 메시지를 전송하면  
    → WebSocket을 통해 현재 연결된 서버로 전달됩니다.
 2. 서버는 해당 메시지를 Redis Channel로 Publish 합니다.
@@ -316,7 +323,7 @@ Quartz는 데이터베이스 기반 분산 락으로 여러 인스턴스 환경�
 
 ---
 
-### 3. 설계 시 고려한 점
+### 설계 시 고려한 점
 채팅 메시지는 Redis Pub/Sub을 통해 전달되기 전에
 이미 데이터베이스에 저장되는 구조입니다.
 
@@ -330,11 +337,11 @@ WebSocket을 통해 현재 서버에 연결된 클라이언트에게
 ```java
 public void publish(Long chatRoomId, ChatMessageDto dto) {
     try {
-        //정상 동작 시 Redis Publish 동작
+        // 정상 동작 시 Redis Publish 동작
         ...
 
     } catch (Exception e) {
-        //Redis Publish 실패 시 fallback 
+        // Redis Publish 실패 시 fallback 
         log.error("Failed to publish chat message: chatRoomId={}, messageId={}",
                 chatRoomId, dto.id(), e);
         chatWebsocketService.broadcastMessage(chatRoomId, dto);
@@ -343,6 +350,7 @@ public void publish(Long chatRoomId, ChatMessageDto dto) {
 ```
 이를 통해 일부 인프라 장애 상황에서도 
 채팅 기능이 완전히 중단되지 않도록 구성했습니다.
+
 </details>
 
 <details>
@@ -601,6 +609,62 @@ OSIV 설정이 필요하지 않았습니다.
 spring:
   jpa:
     open-in-view: false
+```
+
+</details>
+
+<!-- 웹소켓 인증 관련 트러블슈팅 -->
+<details>
+
+<summary><strong>WebSocket STOMP 인증 문제</strong></summary>
+
+### 문제 상황
+Spring STOMP + WebSocket 기반 채팅 기능을 구현하던 중,  
+프론트엔드가 Cookie를 따로 관리하지 않아 STOMP CONNECT 프레임의 Authorization 헤더로 JWT를 전달할 수 없었습니다.  
+
+이로 인해 Handshake 단계에서 Cookie를 통해 JWT를 검증하고 인증 객체를 생성했음에도,  
+MessageMapping 핸들러에서 `@AuthenticationPrincipal`이 정상적으로 주입되지 않는 문제가 발생했습니다.
+
+---
+
+### 원인 분석 과정
+
+#### 1. 서버 로그 확인
+- Handshake 단계에서 생성한 인증 객체가 MessageMapping 핸들러에서 반영되지 않음을 확인  
+- 실제 주입된 객체는 커스텀 인증 객체가 아닌 `UsernamePasswordAuthenticationToken`임을 확인
+
+#### 2. Handshake와 Connect 단계 동작 차이 조사
+- **Handshake 단계**: HTTP 기반으로 동작, 생성된 인증 객체는 HTTP 요청 컨텍스트에만 저장  
+- **Connect 단계**: WebSocket 연결 후 STOMP 프로토콜로 동작, Spring Security 기본 인증 메커니즘이 별도로 실행  
+
+> 결과적으로, 
+> Handshake 단계에서 생성한 커스텀 Authentication이  
+> Connect 단계에서 **Spring Security 기본 인증 객체로 덮어씌워지는 구조**였습니다.  
+
+---
+
+### 해결 방안 및 구현
+
+Handshake와 Connect 두 단계로 인증 처리를 나누고, Connect 단계에서 **기본 인증 객체 대신 커스텀 Authentication 객체를 생성하여 STOMP 메시징 계층에 등록**하도록 구현했습니다.
+
+```
+[Handshake 단계]
+  - HttpServletRequest → Cookie에서 JWT 읽기
+  - 토큰 유효성 검증
+  - sessionAttributes에 토큰 저장
+
+        ⬇
+
+[Connect 단계]
+  - sessionAttributes에서 accessToken 가져오기
+  - JWT Claims 파싱
+  - SecurityUser 생성
+  - Authentication 생성 및 accessor.setUser(authentication)
+
+        ⬇
+
+[MessageMapping 핸들러]
+  - @AuthenticationPrincipal 정상 주입됨
 ```
 
 </details>
