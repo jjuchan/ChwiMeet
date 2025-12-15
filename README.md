@@ -94,7 +94,7 @@
 - 게시글 목록 조회 기능
 - 카테고리, 지역, 키워드 기준 검색 가능
 
-### 게시글 상세 조회회
+### 게시글 상세 조회
 
 ![게시글상세조회](images/게시글/게시글%20상세.gif)
 
@@ -138,11 +138,45 @@
 <details>
 <summary>📅 예약</summary>
 
-### 예약 등록/조회/취소
+### 예약 목록 조회
 
-- 게시글 기반 예약 가능
-- 예약 상태 변경(승인, 취소) 관리
-- Quartz 기반 스케줄링으로 자동 취소 및 정산 재시도 기능 제공
+![예약 목록 내 예약, 내 게시글 예약](images/예약/예약%20목록(내%20예약,%20내%20게시글%20예약).gif)
+
+- 내 게시글의 예약 목록 조회 (호스트)
+- 내 예약 목록 조회 (게스트)
+- 예약의 상태 및 권한에 따른 변경 기능 제공
+
+### 예약 상세 조회
+
+![예약 상세](images/예약/예약%20상세.gif)
+
+- 예약 기본 정보, 상태 변경 로그, 배송 정보 제공
+
+### 예약 등록
+
+![예약 신청](images/예약/예약%20신청.gif)
+
+- 게시글 기반 예약 등록 (날짜, 옵션, 수령/반납 방식 선택 가능)
+  - 예약이 진행중인 기간은 차단하여 중복 예약 방지
+
+### 예약 내용 수정
+
+![예약 내용 수정](images/예약/예약%20수정.gif)
+
+- 예약이 승낙되기 전 게스트가 예약 내용 수정 가능
+
+### 예약 상태 변경
+
+![예약 상태 변경](images/예약/예약%20상태변경.gif)
+
+- 예약의 흐름에 따라 게스트, 호스트 또는 시스템이 상태 변경 가능
+
+### 예약 결재
+
+![예약 결재](images/예약/예약%20결제.gif)
+
+- 예약이 승인 된 후(결제 대기 상태) 게스트가 결제 진행 (tossPayments API 연동)
+- 결제 완료 시 예약의 상태가 자동으로 넘어감
 
 </details>
 
@@ -162,7 +196,7 @@
 
 <div align="center">
   <img 
-    src="https://raw.githubusercontent.com/kku1403/AIBE3_FinalProject_Team1_BE/main/images/%EC%B1%84%ED%8C%85/%EC%B1%84%ED%8C%85.gif"
+    src="images/%EC%B1%84%ED%8C%85/%EC%B1%84%ED%8C%85.gif"
     width="700"
     alt="실시간 채팅 기능 시연"
   />
@@ -231,6 +265,14 @@ Spring AI는 다양한 AI 모델과 벡터 DB를 추상화된 인터페이스로
 
 <img src="https://img.shields.io/badge/Quartz-3E4348?style=for-the-badge&logoColor=white" />
 
+프로젝트에서는 게시글 임베딩, 예약 상태 자동 변경, 오래된 알림 삭제 등
+주기적으로 처리해야 하는 작업들이 필요했습니다.
+
+Spring의 `@Scheduled`로도 가능했지만, Blue/Green 배포 시 배치 작업이 중복 실행될 위험과
+작업 이력 관리의 어려움 때문에 Quartz를 선택했습니다.
+
+Quartz는 데이터베이스 기반 분산 락으로 여러 인스턴스 환경에서도
+배치 작업이 한 번만 실행되도록 보장하며, 작업 실행 이력을 자동으로 기록합니다.
 
 <br>
 
@@ -310,6 +352,195 @@ public void publish(Long chatRoomId, ChatMessageDto dto) {
 채팅 기능이 완전히 중단되지 않도록 구성했습니다.
 
 </details>
+
+<details>
+<summary><strong>📝 Quartz 기반 배치 기능 구현</strong></summary>
+
+### 도입 배경
+주요 MVP 기능들을 개발하며 주기적으로 자동 처리해야 하는 작업들이 요구되었습니다.
+
+**주요 자동화 작업**
+- **게시글 임베딩**: 작성 즉시 처리하면 사용자 대기 시간이 길어지므로, 백그라운드에서 주기적으로 처리
+- **예약 상태 자동 변경**: 청구진행 → 청구완료, 환급예정 → 환급완료 등 시간 기반 상태 전환
+- **오래된 알림 삭제**: 7일 이상 확인하지 않은 알림을 자동으로 정리하여 DB 부담 감소
+- **신고 누적 자동 제재**: 일정 기준 이상 신고가 누적된 사용자를 자동으로 제재
+
+---
+
+### 구조 및 동작 방식
+
+**Quartz 클러스터 모드 활용**
+
+Quartz는 데이터베이스 기반으로 여러 서버 인스턴스가 작업 정보를 공유하며,  
+분산 락을 통해 동일한 작업이 중복 실행되지 않도록 보장합니다.
+
+특히 Blue/Green 배포 시 잠시 두 인스턴스가 동시에 실행되는 순간에도,  
+배치 작업은 한 번만 수행되므로 데이터 정합성을 유지할 수 있습니다.
+
+**구현된 배치 작업**
+
+| 작업명 | 실행 주기    | 목적 |
+|--------|----------|------|
+| 게시글 임베딩 | 매 시간 정각  | 사용자 응답 속도 개선 |
+| 예약 상태 변경 | 매 오후 5시  | 예약 프로세스 자동화 |
+| 알림 정리 | 매일 오후 5시 | 데이터베이스 용량 관리 |
+| 자동 제재 처리 | 매일 오후 5시 | 서비스 품질 유지 |
+
+**작업 등록 및 관리**
+
+각 배치 작업은 애플리케이션 시작 시 Quartz 스케줄러에 자동으로 등록되며,  
+이미 등록된 작업이 있다면 기존 설정을 유지하거나 업데이트합니다.
+
+---
+
+### 설계 시 고려한 점
+
+**배포 안정성**
+
+Blue/Green 배포 중 배치 작업이 실행되더라도,  
+Quartz의 분산 락 메커니즘으로 인해 한 번만 수행됩니다.  
+이를 통해 배포 과정에서도 데이터 정합성을 보장할 수 있습니다.
+
+**작업 독립성**
+
+각 배치 작업을 독립적으로 구성하여,  
+특정 작업에서 오류가 발생해도 다른 작업에 영향을 주지 않도록 설계했습니다.
+
+**실행 이력 관리**
+
+Quartz는 각 작업의 실행 시간, 성공/실패 여부를 데이터베이스에 자동으로 기록하므로,  
+문제 발생 시 빠르게 원인을 파악하고 대응할 수 있습니다.
+
+</details>
+
+<details>
+
+<summary><strong>🔍 2-Stage-RAG 기반 AI 게시글 검색</strong></summary>
+  
+## 도입 배경
+
+기존 방식은 Spring AI의 text-embedding-3-small으로 임베딩한 후 코사인 유사도를 기반으로 벡터 검색을 수행하고, 그 결과를 답변 LLM에 전달해 설명을 생성하는 구조였습니다. 하지만 벡터 검색만으로는 문장 유사도는 높지만 질문 의도와 맞지 않는 게시글까지 조회되는 문제가 발생했습니다.
+
+즉, **검색은 가능했지만 질문에 정말 필요한 게시글만 선별하지는 못하는 구조**였습니다.
+
+## 해결 방식 -> Re-Ranker 모델 추가로 필터링 퀄리티 강화
+
+### 1단계: Retrieve (Vector Search)
+
+```java
+List<Long> candidatePostIds = postVectorService.searchPostIds(query, 5);
+```
+
+MariaDB Vector를 활용해 코사인 유사도 기반으로 top-5 후보군을 빠르게 조회합니다.
+
+**MariaDB Vector 선택 이유**
+
+> 기존 서비스에서 이미 MySQL(MariaDB 계열)을 사용하고 있었기 때문에, Chroma나 Qdrant와 같은 별도의 벡터 DB를 도입할 경우 Python 서버 또는 전용 검색 서버를 추가로 운영해야 하는 부담이 있었습니다. 이에 따라 기존 데이터베이스와 바로 호환되며, 추가 인프라 구성 없이 벡터 검색 기능을 도입할 수 있는 MariaDB Vector 기능을 선택했습니다.
+
+### 2단계: Re-Rank (LLM 필터링)
+
+```java
+String prompt = rerankPrompt.formatted(context, query);
+String raw = rerankerClient.prompt(prompt).call().content();
+List<Long> recommendedIds = parseJsonIdList(raw);
+```
+
+GPT-4.1 mini를 통해 1차 후보들을 직접 검토하여 질문과 실제로 관련 있는 게시글만 선별합니다.
+
+- LLM에는 유연한 검색을 위해 게시글의 제목, 카테고리, 가격, 거래 방식, 지역 정보를 컨텍스트로 전달했습니다.
+- 단순 텍스트 유사도가 아닌 실제 거래 조건을 기준으로 판단하도록 구성했습니다.
+
+### 3단계: Answer (최종 응답)
+
+```java
+String prompt = answerPrompt.formatted(query, context);
+return answerClient.prompt(prompt).call().content();
+```
+
+Re-Rank를 통과한 게시글만으로 GPT-5.1을 이용해 최종 응답을 생성합니다.
+</details>
+
+<details>
+<summary><strong>📸 AWS Lambda + CloudFront 기반 이미지 리사이징 & 캐싱</strong></summary>
+
+## 도입 배경
+
+게시글 이미지(목록, 상세, 썸네일)와 멤버 프로필 이미지(채팅, 게시글 작성자 정보 등)가 자주 노출되면서 다음과 같은 문제가 발생했습니다.
+
+**초기 방식 (원본 이미지 그대로 제공)**
+- 고용량으로 인한 응답 지연
+- 동일 이미지의 반복 요청으로 인한 트래픽 증가
+
+**개선 시도 (Thumbnailator로 서버 리사이징)**
+- 용량은 줄었으나, 서버에서 리사이징을 처리해 업로드하는 구조
+- 사진 5장 정도만 되어도 리사이징 작업으로 응답 속도가 급격히 저하
+
+이에 따라 **이미지 처리 책임을 서버 외부로 완전히 분리하면서도, 반복 요청 성능을 보장하는 구조**가 필요했습니다.
+
+## 해결 방식 -> 이미지 업로드시 AWS Lambda로 리사이징 및 CloudFront 캐싱
+
+### 이미지 처리 흐름
+
+1. 사용자가 이미지를 업로드하면 원본 이미지를 S3에 저장하고, **CloudFront URL을 데이터베이스에 저장**합니다.
+2. S3 업로드 이벤트를 트리거로 AWS Lambda가 실행됩니다.
+3. Lambda에서 이미지 유형에 따라 리사이징을 수행합니다.
+   - **프로필 이미지**: 원본 + 썸네일
+   - **게시글 이미지**: 원본 + 썸네일(목록용) + 상세보기 이미지
+4. 리사이징된 이미지들을 각각 S3에 저장합니다.
+5. 클라이언트는 CloudFront를 통해 용도에 맞는 이미지를 캐싱된 상태로 전달받습니다.
+
+### AWS Lambda 리사이징 
+
+```javascript
+const SIZES = {
+    thumbnail: { width: 800, height: 600 },
+    detail: { width: 1920, height: 1440 }
+};
+
+// 각 크기별 리사이징
+for (const [sizeName, dimensions] of Object.entries(SIZES)) {
+    const resizedImage = await sharp(imageBuffer)
+        .resize(dimensions.width, dimensions.height, {
+            fit: 'cover',
+            position: 'centre'
+        })
+        .webp({ quality: 85, effort: 6 })
+        .toBuffer();
+    
+    const destinationKey = `posts/images/resized/${sizeName}/${nameWithoutExt}.webp`;
+    
+    // S3에 업로드
+    await s3.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: destinationKey,
+        Body: resizedImage,
+        ContentType: "image/webp", //webp로 설정해 용량 경량화
+        CacheControl: "max-age=31536000"  // 1년 캐싱
+    }));
+}
+```
+
+### s3 디렉토리 분기
+
+```java
+// 원본: posts/images/originals/uuid.jpg
+// 리사이즈: posts/images/resized/{sizeType}/uuid.webp
+String resizedKey = "posts/images/resized/" + sizeType + "/" + nameWithoutExt + ".webp";
+return "https://" + cloudfrontDomain + "/" + resizedKey;
+```
+원본 업로드 시 Lambda가 자동으로 각 용도별 이미지를 생성하고, 백엔드에서는 단순히 경로 문자열만 조합하여 반환하는 **책임 분리** 구조로 설계했습니다.
+
+
+## 적용 효과
+
+이미지 리사이징을 AWS Lambda에서 처리하도록 구조를 변경하여, 메인 서버는 단순 업로드/저장 처리만 수행하도록 했습니다. 덕분에 게시글 이미지, 채팅, 멤버 프로필 등 반복 요청이 많은 화면에서도 CloudFront 캐싱과 결합해 빠른 이미지 로딩과 안정적인 응답을 제공할 수 있었습니다.
+
+> - 응답 속도 개선: 5장 기준 이미지 업로드 시 기존 1~2초에서 약 600ms로 단축
+> - 트래픽 효율성 강화: 리사이징된 이미지를 캐싱하여 사용자 트래픽 감소
+> - 유지보수성과 확장성 확보: 이미지 유형에 관계없이 공통 파이프라인으로 처리
+
+</details>
+
 
 <br>
 
@@ -438,6 +669,247 @@ Handshake와 Connect 두 단계로 인증 처리를 나누고, Connect 단계에
 
 </details>
 
+<details>
+
+<summary><strong>게시글 임베딩 Quartz 기반 배치 시 동시성 이슈</strong></summary>
+
+
+### 문제 상황
+
+Quartz 기반 게시글 임베딩 배치 작업을 운영하면서,  
+**여러 워커가 동일한 게시글을 중복으로 처리하는 문제**가 발생했습니다.
+
+Quartz는 클러스터 모드에서 **배치 작업 자체의 중복 실행**은 방지하지만,  
+같은 작업 내에서 **동일한 데이터를 여러 워커가 처리하는 것**은 막을 수 없었습니다.
+
+실제로 로그를 확인한 결과, 하나의 게시글이 두 개의 워커에서 동시에 임베딩되고,  
+OpenAI API가 중복으로 호출되어 불필요한 비용이 발생하고 있었습니다.
+```
+발생한 시나리오:
+T1: Worker A가 게시글 1~100번 조회
+T1: Worker B가 게시글 1~100번 조회
+T2: Worker A가 게시글 1번 임베딩 시작
+T2: Worker B도 게시글 1번 임베딩 시작 (중복!)
+→ 동일 게시글에 대해 API 2번 호출, 비용 2배 발생
+```
+
+---
+
+### 원인 분석 과정
+
+배치 작업의 처리 흐름을 분석한 결과, 다음과 같은 구조에서 문제가 발생하고 있었습니다.
+
+**기존 처리 방식**
+1. 처리 대상 게시글 조회
+2. 조회한 게시글 리스트를 순차적으로 처리
+3. 처리 완료 후 완료 표시
+
+이 구조에서는 **조회 시점과 처리 시작 시점 사이에 시간차가 발생**하며,  
+이 시간 동안 다른 워커도 동일한 게시글을 조회할 수 있었습니다.
+
+특히 다음과 같은 상황에서 문제가 더 자주 발생했습니다:
+- 배치 작업이 짧은 주기로 실행될 때
+- 처리할 게시글이 많아 작업 시간이 길어질 때
+- 여러 워커가 거의 동시에 배치를 시작할 때
+
+근본 원인은 **"데이터를 조회한다"는 행위 자체가 해당 데이터를 점유하는 것을 보장하지 않는다**는 점이었습니다.
+
+---
+
+### 해결 방안 및 구현
+
+**낙관적 락 기반 선점(Claim) 패턴 도입**
+
+데이터를 조회한 후 처리하는 것이 아니라,  
+**먼저 처리할 데이터를 선점한 후 실제로 선점에 성공한 데이터만 처리**하도록 변경했습니다.
+
+**1. 상태 관리 및 버전 관리 추가**
+```java
+public enum EmbeddingStatus {
+    WAIT,     // 임베딩 대기
+    PENDING,  // 처리 중 (워커가 선점함)
+    DONE      // 완료
+}
+
+@Entity
+public class Post extends BaseEntity {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "embedding_status", nullable = false)
+    private EmbeddingStatus embeddingStatus;
+    
+    @Version
+    @Column(name = "embedding_version", nullable = false)
+    private Long embeddingVersion;
+}
+```
+
+`embeddingStatus`로 현재 처리 단계를 표시하고,  
+JPA의 `@Version`을 통해 동시 수정을 감지하여 낙관적 락을 구현했습니다.
+
+**2. 원자적 상태 업데이트 쿼리**
+```java
+public long bulkUpdateStatusToPendingWithVersion(List<Long> postIds) {
+    return getQueryFactory()
+        .update(post)
+        .set(post.embeddingStatus, EmbeddingStatus.PENDING)
+        .set(post.embeddingVersion, post.embeddingVersion.add(1))  // 버전 증가
+        .where(
+            post.id.in(postIds),
+            post.embeddingStatus.eq(EmbeddingStatus.WAIT)  // 핵심 조건
+        )
+        .execute();
+}
+```
+
+핵심은 `WHERE embeddingStatus = WAIT` 조건입니다.  
+여러 워커가 동시에 같은 게시글을 PENDING으로 변경하려 해도,  
+**데이터베이스 레벨에서 하나의 워커만 성공**하게 됩니다.
+
+**3. 버전 검증을 통한 선점 확인**
+```java
+public List<PostEmbeddingDto> verifyAcquiredPosts(List<PostEmbeddingDto> postDtos) {
+    // 1. 각 게시글의 예상 버전 계산 (기존 버전 + 1)
+    Map<Long, Long> expectedVersions = postDtos.stream()
+        .collect(Collectors.toMap(
+            PostEmbeddingDto::id, 
+            dto -> dto.embeddingVersion() + 1
+        ));
+    
+    // 2. DB에서 현재 버전 조회
+    List<Tuple> results = getQueryFactory()
+        .select(post.id, post.embeddingVersion)
+        .from(post)
+        .where(
+            post.id.in(postIds),
+            post.embeddingStatus.eq(EmbeddingStatus.PENDING)
+        )
+        .fetch();
+    
+    // 3. 버전이 일치하는 게시글만 필터링 (실제 선점 성공)
+    Set<Long> acquiredIds = results.stream()
+        .filter(tuple -> {
+            Long id = tuple.get(post.id);
+            Long currentVersion = tuple.get(post.embeddingVersion);
+            return currentVersion.equals(expectedVersions.get(id));
+        })
+        .map(tuple -> tuple.get(post.id))
+        .collect(Collectors.toSet());
+    
+    return postDtos.stream()
+        .filter(dto -> acquiredIds.contains(dto.id()))
+        .toList();
+}
+```
+
+버전 검증을 통해 이중으로 안전장치를 만들었습니다.  
+만약 다른 워커가 먼저 선점했다면, 버전 불일치로 처리 대상에서 제외됩니다.
+
+**4. 선점 기반 배치 로직**
+```java
+public void embedPostsBatch() {
+    // 1. WAIT 상태 게시글 조회 (embeddingVersion 포함)
+    List<Post> postsToEmbed = postQueryRepository
+        .findPostsToEmbedWithDetails(100);
+    
+    if (postsToEmbed.isEmpty()) {
+        log.info("임베딩할 WAIT 상태의 게시글이 없습니다.");
+        return;
+    }
+    
+    // 2. DTO 변환 (현재 버전 정보 포함)
+    List<PostEmbeddingDto> postDtos = postsToEmbed.stream()
+        .map(PostEmbeddingDto::from)
+        .toList();
+    
+    List<Long> postIds = postDtos.stream()
+        .map(PostEmbeddingDto::id)
+        .toList();
+    
+    // 3. 선점 시도: WAIT → PENDING (버전 +1)
+    long updatedCount = postTransactionService.updateStatusToPending(postIds);
+    
+    if (updatedCount == 0) {
+        log.warn("선점 시도했으나 업데이트된 게시글이 0건입니다.");
+        return;
+    }
+    
+    log.info("총 {}개의 게시글을 PENDING 상태로 선점 시도했습니다.", updatedCount);
+    
+    // 4. 버전 검증으로 실제 선점 성공한 게시글만 필터링
+    List<PostEmbeddingDto> acquiredPosts = 
+        postTransactionService.verifyAcquiredPosts(postDtos);
+    
+    log.info("실제 선점 성공: {}건 (다른 워커 선점: {}건)", 
+        acquiredPosts.size(), 
+        postDtos.size() - acquiredPosts.size());
+    
+    // 5. 임베딩 처리
+    int successCount = 0;
+    int failedCount = 0;
+    
+    for (PostEmbeddingDto dto : acquiredPosts) {
+        try {
+            log.info(">>> 임베딩 시작: Post ID {}", dto.id());
+            postVectorService.indexPost(dto);
+            postTransactionService.updateStatusToDone(dto.id());
+            log.info(">>> 임베딩 성공: Post ID {}", dto.id());
+            successCount++;
+        } catch (Exception e) {
+            log.error(">>> 임베딩 실패: Post ID {}", dto.id(), e);
+            // 실패 시 WAIT로 복원하여 재시도 가능하도록
+            postTransactionService.updateStatusToWait(dto.id());
+            failedCount++;
+        }
+    }
+    
+    log.info("Embedding batch finished. 성공: {}, 실패: {}", 
+        successCount, failedCount);
+}
+```
+
+**개선된 처리 흐름**
+```
+Worker A와 Worker B가 동시에 배치 시작
+
+T1: Worker A - 게시글 1~100번 조회 (모두 version=5, WAIT 상태)
+T1: Worker B - 게시글 1~100번 조회 (모두 version=5, WAIT 상태)
+
+T2: Worker A - UPDATE ... SET version=6, status=PENDING 
+              WHERE id IN (...) AND status=WAIT
+              → 성공 (100건이 version=6, PENDING으로 변경됨)
+              
+T2: Worker B - UPDATE ... SET version=6, status=PENDING 
+              WHERE id IN (...) AND status=WAIT
+              → 실패 (0건, 이미 PENDING이라 WHERE 조건 불만족)
+
+T3: Worker A - 버전 검증: 
+              예상 version=6, 실제 DB version=6 → 100건 일치 확인
+              
+T3: Worker B - 버전 검증: 
+              조회 결과 0건 (작업 종료)
+
+T4: Worker A - 임베딩 처리 (게시글 1~100번)
+T4: Worker B - 다음 배치 대기
+
+T5: Worker A - 성공: PENDING → DONE
+              실패: PENDING → WAIT (버전은 유지, 재시도 가능)
+```
+
+**이중 안전장치**
+
+1. **WHERE 조건**: `status = WAIT`인 게시글만 선점 가능
+2. **버전 검증**: 업데이트 후 예상 버전과 실제 버전이 일치하는지 확인
+
+두 가지 메커니즘으로 동시성 문제를 완벽하게 차단했습니다.
+
+**결과**
+
+- **중복 처리 차단**: DB 조건문과 버전 검증으로 동일 데이터를 여러 워커가 처리하지 않음
+- **API 비용 절감**: 중복 호출 제거로 불필요한 OpenAI API 비용 발생 방지
+- **자동 재시도**: 실패한 작업은 WAIT 상태로 복원되어 다음 배치에서 자동 재처리
+- **데이터 정합성**: JPA `@Version`과 트랜잭션으로 안전한 상태 관리
+
+</details>
 
 <br>
 
