@@ -303,6 +303,48 @@ public void publish(Long chatRoomId, ChatMessageDto dto) {
 채팅 기능이 완전히 중단되지 않도록 구성했습니다.
 </details>
 
+<details>
+<summary><strong>🔥 2-stage-rag 기반 AI 게시글 검색</strong></summary>
+  
+### 도입 배경
+
+기존 벡터 검색만으로는 문장 유사도는 높지만 질문 의도와 맞지 않는 게시글까지 조회되는 문제가 있었습니다. 즉, **검색은 가능했지만 질문에 정말 필요한 게시글만 선별하지는 못하는 구조**였습니다.
+
+### 해결 방식
+
+#### 1단계: Retrieve (Vector Search)
+```java
+List<Long> candidatePostIds = postVectorService.searchPostIds(query, 5);
+```
+MariaDB Vector를 활용해 코사인 유사도 기반으로 top-5 후보군을 빠르게 조회합니다.
+
+##### MariaDB Vector 선택 이유
+
+>기존 서비스에서 이미 MySQL(MariaDB 계열)을 사용하고 있었기 때문에,  
+Chroma나 Qdrant와 같은 별도의 벡터 DB를 도입할 경우  
+Python 서버 또는 전용 검색 서버를 추가로 운영해야 하는 부담이 있었습니다.
+이에 따라 기존 데이터베이스와 바로 호환되며,  
+추가 인프라 구성 없이 벡터 검색 기능을 도입할 수 있는  
+**MariaDB Vector 기능을 선택했습니다.**
+
+#### 2단계: Re-Rank (LLM 필터링)
+```java
+String prompt = rerankPrompt.formatted(context, query);
+String raw = rerankerClient.prompt(prompt).call().content();
+List<Long> recommendedIds = parseJsonIdList(raw);
+```
+GPT-4.1 mini를 통해 1차 후보들을 직접 검토하여 질문과 실제로 관련 있는 게시글만 선별합니다.
+
+- LLM에는 유연한 검색을 위해 게시글의 제목, 카테고리, 가격, 거래 방식, 지역 정보를 컨텍스트로 전달했습니다.
+- 단순 텍스트 유사도가 아닌 실제 거래 조건을 기준으로 판단하도록 구성했습니다.
+
+#### 3단계: Answer (최종 응답)
+```java
+String prompt = answerPrompt.formatted(query, context);
+return answerClient.prompt(prompt).call().content();
+```
+Re-Rank를 통과한 게시글만으로 GPT-5.1을 이용해 최종 응답을 생성합니다.
+
 <br>
 
 # 🔥 트러블 슈팅
